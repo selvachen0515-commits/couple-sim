@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>情侣沟通模拟器 💑</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  * { font-family: 'Noto Sans SC', sans-serif; }
+  body { background: #fdf8f5; }
+  .bubble-in { animation: bubbleIn 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+  @keyframes bubbleIn {
+    from { opacity:0; transform:scale(0.8) translateY(10px); }
+    to { opacity:1; transform:scale(1) translateY(0); }
+  }
+  .scrollbar-hide::-webkit-scrollbar { display:none; }
+  .scrollbar-hide { -ms-overflow-style:none; scrollbar-width:none; }
+  .dot { width:8px;height:8px;border-radius:50%;background:#fca5a5;display:inline-block;animation:bounce 1s infinite; }
+  .dot:nth-child(2){animation-delay:.15s}
+  .dot:nth-child(3){animation-delay:.3s}
+  @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+</style>
+</head>
+<body class="min-h-screen">
+
+<div id="app"></div>
+
+<script>
+// ============ STATE ============
+const state = {
+  page: 'setup', // setup | chat | review
+  apiKey: localStorage.getItem('gemini_key') || '',
+  partner: {
+    name: '小林',
+    attachmentStyle: 'anxious',
+    emotionSensitivity: 'medium',
+    communicationStyle: 'indirect',
+    extraDescription: ''
+  },
+  scene: null,
+  messages: [],
+  temperature: 50,
+  conversationTrend: 'neutral',
+  currentRedFlags: [],
+  currentQuickOptions: ['安慰一下对方', '坦诚说明情况', '先道歉再解释'],
+  isLoading: false,
+  reviewReport: null,
+  setupStep: 1,
+  selectedSceneId: '',
+  isCustomScene: false,
+  customSceneText: '',
+  expandedEmotions: new Set(),
+  rewriteTarget: '',
+  rewriteResult: '',
+  isRewriting: false,
+};
+
+const PRESET_SCENES = [
+  { id:'slow-reply', emoji:'💬', title:'回消息太慢', desc:'你今天回消息比较慢，对方认为你不在乎他/她，情绪有些低落，等了很久才等到你的回复。' },
+  { id:'forgot-anniversary', emoji:'🎂', title:'忘了纪念日', desc:'你忘记了你们的纪念日，对方精心准备了惊喜却扑了个空，现在正在生闷气。' },
+  { id:'cold-war', emoji:'😶', title:'冷战中', desc:'你们已经冷战了两天，起因是一件小事。对方没有主动开口，你决定打破僵局。' },
+  { id:'too-busy', emoji:'😤', title:'工作太忙', desc:'最近你工作非常繁忙，已经连续一周没有好好陪对方，对方开始抱怨你"心里只有工作"。' },
+  { id:'midnight', emoji:'🌙', title:'深夜情绪崩溃', desc:'凌晨一点，对方突然说"感觉好累，什么都不想做"，情绪明显低落，你不确定发生了什么。' },
+];
+
+const ATTACHMENT = {
+  secure: {label:'安全型', desc:'情感稳定，信任对方，能良性沟通', emoji:'🌿'},
+  anxious: {label:'焦虑型', desc:'在意回应，容易过度解读，需要确认感', emoji:'🌊'},
+  avoidant: {label:'回避型', desc:'不擅长表达，遇冲突倾向退缩沉默', emoji:'🌑'},
+  disorganized: {label:'混乱型', desc:'既渴望亲密又害怕亲密，情绪不稳定', emoji:'⚡'},
+};
+const SENSITIVITY = {
+  low: {label:'低', desc:'比较理性，不易被情绪触动'},
+  medium: {label:'中', desc:'能感受情绪，但不会过度反应'},
+  high: {label:'高', desc:'对语气用词极敏感，易受伤也易感动'},
+};
+const COMMSTYLE = {
+  direct: {label:'直给型', desc:'有什么说什么，不绕弯子', emoji:'⚡'},
+  indirect: {label:'迂回型', desc:'表达委婉，说的不一定是真正想说的', emoji:'🌀'},
+  silent: {label:'沉默型', desc:'喜欢先沉默，不擅长主动开口', emoji:'🤫'},
+};
+const TEMP_CONFIG = {
+  frozen: {emoji:'❄️', label:'冷战', color:'text-blue-400', bar:'bg-blue-300', bg:'bg-blue-50'},
+  tense: {emoji:'🌡', label:'紧张', color:'text-orange-400', bar:'bg-orange-300', bg:'bg-orange-50'},
+  warming: {emoji:'🌤', label:'回暖', color:'text-yellow-500', bar:'bg-yellow-400', bg:'bg-yellow-50'},
+  intimate: {emoji:'☀️', label:'亲密', color:'text-rose-400', bar:'bg-rose-400', bg:'bg-rose-50'},
+};
+const ENDING_CONFIG = {
+  'deep-cold-war': {emoji:'❄️', title:'深度冷战', desc:'这次对话让关系雪上加霜，双方的距离变得更远了。', color:'text-blue-500'},
+  'suppressed': {emoji:'🌧', title:'暂时压下去了', desc:'矛盾没有真正解决，只是暂时搁置了。下次还可能爆发。', color:'text-gray-500'},
+  'initial-reconciliation': {emoji:'🌤', title:'初步和解', desc:'有进展，关系在回暖。不过还需要更多的沟通和理解。', color:'text-yellow-500'},
+  'true-understanding': {emoji:'☀️', title:'真正理解彼此', desc:'这次对话很成功！你们的关系因为这次沟通变得更亲密了。', color:'text-rose-500'},
+};
+
+function getTempLevel() {
+  if (state.temperature < 25) return 'frozen';
+  if (state.temperature < 50) return 'tense';
+  if (state.temperature < 75) return 'warming';
+  return 'intimate';
+}
+function getEnding() {
+  if (state.temperature < 25) return 'deep-cold-war';
+  if (state.temperature < 50) return 'suppressed';
+  if (state.temperature < 75) return 'initial-reconciliation';
+  return 'true-understanding';
+}
+
+// ============ API ============
+async function callGemini(messages) {
+  const key = state.apiKey;
+  if (!key) throw new Error('没有 API Key');
+
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${key}`
+    },
+    body: JSON.stringify({
+      model: 'gemini-2.0-flash',
+      messages,
+      temperature: 0.8,
+      response_format: { type: 'json_object' }
+    })
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error?.message || '请求失败');
+  }
+  const data = await res.json();
+  return data.choices[0]?.message?.content || '';
+}
+
+function buildSystemPrompt() {
+  const p = state.partner;
+  const attachDesc = {
+    secure:'安全型（情感稳定，信任对方，能良性沟通，但也有自己的边界）',
+    anxious:'焦虑型（非常在意对方的回应，容易过度解读，害怕被抛弃，需要大量确认感）',
+    avoidant:'回避型（不擅长表达情绪，遇到冲突倾向于退缩或沉默，害怕过度依赖）',
+    disorganized:'混乱型（既渴望亲密又害怕亲密，情绪反应不稳定，有时会做出矛盾的行为）',
+  };
+  const sensDesc = {low:'情绪敏感度低', medium:'情绪敏感度中等', high:'情绪敏感度高（对语气、用词极度敏感）'};
+  const commDesc = {direct:'沟通风格直给型', indirect:'沟通风格迂回型（说的不是真正想说的）', silent:'沟通风格沉默型（喜欢先沉默，内心有很多感受）'};
+
+  return `你是情侣沟通模拟器中的"另一半"角色，名字叫"${p.name}"。
+
+## 性格特征
+- 依恋类型：${attachDesc[p.attachmentStyle]}
+- ${sensDesc[p.emotionSensitivity]}
+- ${commDesc[p.communicationStyle]}
+${p.extraDescription ? `- 其他：${p.extraDescription}` : ''}
+
+## 当前场景
+${state.scene?.description}
+
+## 必须以JSON格式回复，不输出任何其他内容：
+{
+  "message": "你对用户说的话（第一人称，符合性格和情绪）",
+  "emotionState": "当前内心真实感受（15-30字）",
+  "temperatureDelta": 数字（-20到20的整数，踩雷=-10到-20，共情=+10到+20，中性=0）,
+  "redFlags": ["用户踩雷的表达，没有则空数组"],
+  "quickOptions": ["回复建议1（10字内）", "回复建议2", "回复建议3"]
+}
+
+注意：message要有情感层次，quickOptions代表不同沟通策略，所有文字用中文。`;
+}
+
+async function sendMessage(content) {
+  if (!content.trim() || state.isLoading) return;
+
+  const userMsg = {
+    id: 'u-' + Date.now(),
+    role: 'user',
+    content: content.trim(),
+    timestamp: Date.now(),
+    score: null,
+  };
+  state.messages.push(userMsg);
+  state.isLoading = true;
+  render();
+
+  try {
+    const historyMsgs = state.messages.slice(0, -1).map(m => ({
+      role: m.role === 'user' ? 'user' : 'assistant',
+      content: m.content
+    }));
+
+    const apiMessages = [
+      { role: 'system', content: buildSystemPrompt() },
+      ...historyMsgs,
+      { role: 'user', content: content.trim() }
+    ];
+
+    const raw = await callGemini(apiMessages);
+    let parsed;
+    try { parsed = JSON.parse(raw); } catch { parsed = { message: raw, emotionState:'', temperatureDelta:0, redFlags:[], quickOptions:['安慰对方','解释原因','先道歉'] }; }
+
+    const delta = typeof parsed.temperatureDelta === 'number' ? Math.max(-20, Math.min(20, parsed.temperatureDelta)) : 0;
+    state.temperature = Math.max(0, Math.min(100, state.temperature + delta));
+
+    // score user message
+    userMsg.score = delta > 0 ? 'positive' : delta < 0 ? 'negative' : 'neutral';
+    userMsg.temperatureDelta = delta;
+
+    const partnerMsg = {
+      id: 'p-' + Date.now(),
+      role: 'partner',
+      content: parsed.message || '...',
+      emotionState: parsed.emotionState || '',
+      temperatureDelta: delta,
+      redFlags: parsed.redFlags || [],
+      quickOptions: parsed.quickOptions || ['安慰对方','解释原因','先道歉'],
+    };
+    state.messages.push(partnerMsg);
+    state.currentRedFlags = parsed.redFlags || [];
+    state.currentQuickOptions = parsed.quickOptions || ['安慰对方','解释原因','先道歉'];
+
+    // trend
+    const recent = state.messages.slice(-6);
+    const score = recent.reduce((a, m) => a + (m.temperatureDelta || 0), 0);
+    if (score >= 15) state.conversationTrend = 'reconciling';
+    else if (score <= -15) state.conversationTrend = 'deepening-conflict';
+    else if (score >= 5) state.conversationTrend = 'breakthrough';
+    else state.conversationTrend = 'neutral';
+
+  } catch(e) {
+    state.messages.push({
+      id: 'err-' + Date.now(),
+      role: 'partner',
+      content: `（出错了：${e.message}）`,
+      emotionState:'', temperatureDelta:0, redFlags:[], quickOptions: state.currentQuickOptions
+    });
+  }
+
+  state.isLoading = false;
+  render();
+  setTimeout(() => {
+    const bottom = document.getElementById('chat-bottom');
+    if (bottom) bottom.scrollIntoView({ behavior: 'smooth' });
+  }, 100);
+}
+
+async function rewriteMessage(original) {
+  state.rewriteTarget = original;
+  state.rewriteResult = '';
+  state.isRewriting = true;
+  render();
+
+  try {
+    const p = state.partner;
+    const raw = await callGemini([
+      { role: 'system', content: `你是情感沟通专家。将踩雷的话改写成更好的表达方式。
+另一半：${ATTACHMENT[p.attachmentStyle].label}，${SENSITIVITY[p.emotionSensitivity].label}敏感，场景：${state.scene?.description}
+只返回改写后的话，不要解释，不要引号。` },
+      { role: 'user', content: `原话："${original}"，改写成更好的表达。` }
+    ]);
+    state.rewriteResult = raw.trim().replace(/^["「]|["」]$/g, '');
+  } catch(e) {
+    state.rewriteResult = '改写失败：' + e.message;
+  }
+  state.isRewriting = false;
+  render();
+}
+
+function endConversation() {
+  const userMsgs = state.messages.filter(m => m.role === 'user');
+  const negCount = userMsgs.filter(m => m.score === 'negative').length;
+  const posCount = userMsgs.filter(m => m.score === 'positive').length;
+  const p = state.partner;
+  const aLabel = ATTACHMENT[p.attachmentStyle].label;
+
+  let styleSummary;
+  if (negCount > posCount) {
+    styleSummary = `你在这次对话中倾向于讲道理而非共情，有 ${negCount} 次表达方式让对方感到受伤。对于${aLabel}伴侣，先被理解比被说服更重要。`;
+  } else if (posCount > negCount) {
+    styleSummary = `你展现了不错的共情能力，有 ${posCount} 次表达让对方感到被理解。继续保持这种温柔真诚的沟通方式。`;
+  } else {
+    styleSummary = `你的沟通方式比较平衡，有共情的一面，也有些时候表达不够温和。整体有进步空间。`;
+  }
+
+  state.reviewReport = {
+    ending: getEnding(),
+    communicationStyleSummary: styleSummary,
+    suggestions: [
+      '当对方情绪激动时，先说"我理解你的感受"再解释原因，比直接讲道理更有效',
+      `对于${p.emotionSensitivity === 'high' ? '高敏感' : p.emotionSensitivity === 'medium' ? '中等敏感' : '低敏感'}的伴侣，避免用"随便""没事""你想多了"等词，会让对方感到被忽视`,
+      '在对话结尾加一句"我很在乎你"，能有效降低对方的防御心理',
+    ],
+    messages: [...state.messages],
+    finalTemperature: state.temperature,
+  };
+  state.page = 'review';
+  render();
+}
+
+// ============ RENDER ============
+function render() {
+  const app = document.getElementById('app');
+  if (state.page === 'setup') app.innerHTML = renderSetup();
+  else if (state.page === 'chat') app.innerHTML = renderChat();
+  else app.innerHTML = renderReview();
+  bindEvents();
+}
+
+function renderSetup() {
+  const p = state.partner;
+  return `
+  <div class="min-h-screen bg-gradient-to-b from-rose-50 to-amber-50 flex items-center justify-center p-4">
+    <div class="w-full max-w-lg">
+      <div class="text-center mb-8">
+        <div class="text-5xl mb-3">💑</div>
+        <h1 class="text-2xl font-bold text-rose-900">情侣沟通模拟器</h1>
+        <p class="text-rose-400 mt-1 text-sm">模拟真实对话场景，看看不同的说法会带来什么结果</p>
+      </div>
+
+      <!-- API Key 设置 -->
+      ${!state.apiKey ? `
+      <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-4">
+        <div class="text-sm font-medium text-amber-700 mb-2">🔑 需要 Gemini API Key</div>
+        <div class="flex gap-2">
+          <input id="api-key-input" type="password" placeholder="AIzaSy..." value="${state.apiKey}"
+            class="flex-1 border border-amber-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-amber-400">
+          <button onclick="saveApiKey()" class="px-4 py-2 bg-amber-400 text-white rounded-xl text-sm hover:bg-amber-500">保存</button>
+        </div>
+        <a href="https://aistudio.google.com/apikey" target="_blank" class="text-xs text-amber-500 mt-1 block">→ 免费获取 API Key</a>
+      </div>` : `
+      <div class="bg-green-50 border border-green-200 rounded-2xl p-3 mb-4 flex items-center justify-between">
+        <span class="text-xs text-green-600">✅ API Key 已配置</span>
+        <button onclick="clearApiKey()" class="text-xs text-gray-400 hover:text-red-400">更换</button>
+      </div>`}
+
+      <!-- 步骤指示 -->
+      <div class="flex items-center justify-center gap-2 mb-6">
+        <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${state.setupStep >= 1 ? 'bg-rose-400 text-white' : 'bg-rose-100 text-rose-300'}">1</div>
+        <div class="h-0.5 w-12 ${state.setupStep >= 2 ? 'bg-rose-400' : 'bg-rose-100'}"></div>
+        <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${state.setupStep >= 2 ? 'bg-rose-400 text-white' : 'bg-rose-100 text-rose-300'}">2</div>
+      </div>
+
+      <div class="bg-white rounded-3xl shadow-sm border border-rose-100 p-6">
+        ${state.setupStep === 1 ? renderStep1() : renderStep2()}
+      </div>
+      <p class="text-center text-xs text-rose-300 mt-4">所有对话仅用于模拟练习</p>
+    </div>
+  </div>`;
+}
+
+function renderStep1() {
+  const p = state.partner;
+  return `
+  <div class="space-y-5">
+    <h2 class="text-lg font-semibold text-rose-800">设置另一半的性格</h2>
+    <div>
+      <label class="text-sm text-rose-600 font-medium mb-1.5 block">Ta 叫什么名字？</label>
+      <input id="partner-name" type="text" value="${p.name}" placeholder="小林、阿明……"
+        class="w-full border border-rose-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-rose-400">
+    </div>
+    <div>
+      <label class="text-sm text-rose-600 font-medium mb-1.5 block">依恋类型</label>
+      <div class="grid grid-cols-2 gap-2">
+        ${Object.entries(ATTACHMENT).map(([k,v]) => `
+        <button onclick="setPartner('attachmentStyle','${k}')"
+          class="p-3 rounded-xl border text-left transition-all ${p.attachmentStyle === k ? 'border-rose-400 bg-rose-50' : 'border-gray-100 hover:border-rose-200'}">
+          <div class="text-lg mb-0.5">${v.emoji}</div>
+          <div class="text-sm font-medium text-gray-800">${v.label}</div>
+          <div class="text-xs text-gray-400 mt-0.5 leading-tight">${v.desc}</div>
+        </button>`).join('')}
+      </div>
+    </div>
+    <div>
+      <label class="text-sm text-rose-600 font-medium mb-1.5 block">情绪敏感度</label>
+      <div class="grid grid-cols-3 gap-2">
+        ${Object.entries(SENSITIVITY).map(([k,v]) => `
+        <button onclick="setPartner('emotionSensitivity','${k}')"
+          class="p-3 rounded-xl border text-center transition-all ${p.emotionSensitivity === k ? 'border-rose-400 bg-rose-50' : 'border-gray-100 hover:border-rose-200'}">
+          <div class="text-sm font-bold text-gray-800">${v.label}</div>
+          <div class="text-xs text-gray-400 mt-0.5 leading-tight">${v.desc}</div>
+        </button>`).join('')}
+      </div>
+    </div>
+    <div>
+      <label class="text-sm text-rose-600 font-medium mb-1.5 block">沟通风格</label>
+      <div class="grid grid-cols-3 gap-2">
+        ${Object.entries(COMMSTYLE).map(([k,v]) => `
+        <button onclick="setPartner('communicationStyle','${k}')"
+          class="p-3 rounded-xl border text-center transition-all ${p.communicationStyle === k ? 'border-rose-400 bg-rose-50' : 'border-gray-100 hover:border-rose-200'}">
+          <div class="text-lg mb-0.5">${v.emoji}</div>
+          <div class="text-sm font-medium text-gray-800">${v.label}</div>
+          <div class="text-xs text-gray-400 leading-tight">${v.desc}</div>
+        </button>`).join('')}
+      </div>
+    </div>
+    <div>
+      <label class="text-sm text-rose-600 font-medium mb-1.5 block">还有什么补充？<span class="text-gray-300 font-normal ml-1">可选</span></label>
+      <textarea id="partner-extra" placeholder="容易玻璃心、说话毒舌但其实很在乎……" rows="2"
+        class="w-full border border-rose-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-rose-400 resize-none">${p.extraDescription}</textarea>
+    </div>
+    <button onclick="goStep2()"
+      class="w-full py-3 rounded-xl bg-rose-400 text-white font-medium text-sm hover:bg-rose-500 transition-colors">
+      下一步：选择场景 →
+    </button>
+  </div>`;
+}
+
+function renderStep2() {
+  return `
+  <div class="space-y-5">
+    <div class="flex items-center gap-2">
+      <button onclick="state.setupStep=1;render()" class="text-rose-300 hover:text-rose-500">←</button>
+      <h2 class="text-lg font-semibold text-rose-800">选择场景</h2>
+    </div>
+    <div class="space-y-2">
+      ${PRESET_SCENES.map(s => `
+      <button onclick="selectScene('${s.id}')"
+        class="w-full p-4 rounded-xl border text-left transition-all ${state.selectedSceneId === s.id && !state.isCustomScene ? 'border-rose-400 bg-rose-50' : 'border-gray-100 hover:border-rose-200'}">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-xl">${s.emoji}</span>
+          <span class="text-sm font-medium text-gray-800">${s.title}</span>
+        </div>
+        <p class="text-xs text-gray-400 leading-relaxed">${s.desc}</p>
+      </button>`).join('')}
+      <div onclick="state.isCustomScene=true;state.selectedSceneId='';render()"
+        class="p-4 rounded-xl border cursor-pointer transition-all ${state.isCustomScene ? 'border-rose-400 bg-rose-50' : 'border-gray-100 hover:border-rose-200'}">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-xl">✏️</span>
+          <span class="text-sm font-medium text-gray-800">自定义场景</span>
+        </div>
+        ${state.isCustomScene ? `<textarea id="custom-scene" onclick="event.stopPropagation()" placeholder="描述当前背景……" rows="3"
+          class="w-full border border-rose-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-rose-400 resize-none bg-white">${state.customSceneText}</textarea>` : ''}
+      </div>
+    </div>
+    <button onclick="startChat()"
+      class="w-full py-3 rounded-xl bg-rose-400 text-white font-medium text-sm hover:bg-rose-500 transition-colors ${(!state.selectedSceneId && !state.isCustomScene) ? 'opacity-40 cursor-not-allowed' : ''}">
+      开始模拟 💬
+    </button>
+  </div>`;
+}
+
+function renderChat() {
+  const tempLevel = getTempLevel();
+  const tc = TEMP_CONFIG[tempLevel];
+  const trendMap = {
+    reconciling: {label:'正在走向和解', color:'text-green-500', emoji:'📈'},
+    'deepening-conflict': {label:'矛盾在加深', color:'text-red-400', emoji:'📉'},
+    neutral: {label:'暂时平稳', color:'text-gray-400', emoji:'➡️'},
+    breakthrough: {label:'出现突破', color:'text-rose-500', emoji:'✨'},
+  };
+  const trend = trendMap[state.conversationTrend];
+
+  return `
+  <div class="flex flex-col" style="height:100dvh;max-height:100dvh">
+    <!-- Header -->
+    <div class="bg-white border-b border-rose-100 px-4 py-3 flex items-center gap-3 flex-shrink-0">
+      <button onclick="state.page='setup';state.setupStep=1;render()" class="text-rose-300 hover:text-rose-500 text-lg">←</button>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center text-sm font-medium">${state.partner.name.charAt(0)}</div>
+          <div>
+            <div class="text-sm font-medium text-gray-800">${state.partner.name}</div>
+            <div class="text-xs text-gray-400 truncate">${state.scene?.description?.slice(0,28)}…</div>
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full ${tc.bg} flex-shrink-0">
+        <span>${tc.emoji}</span>
+        <div class="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+          <div class="h-full rounded-full transition-all duration-700 ${tc.bar}" style="width:${state.temperature}%"></div>
+        </div>
+        <span class="text-xs font-medium ${tc.color}">${tc.label}</span>
+      </div>
+    </div>
+
+    <div class="flex-1 flex overflow-hidden">
+      <!-- 对话区 -->
+      <div class="flex-1 flex flex-col overflow-hidden">
+        <div id="chat-messages" class="flex-1 overflow-y-auto px-4 py-4 space-y-3 scrollbar-hide">
+          <div class="bg-rose-50 border border-rose-100 rounded-2xl p-3 text-xs text-rose-500 leading-relaxed">
+            📍 <strong>场景：</strong>${state.scene?.description}
+          </div>
+          ${state.messages.length === 0 ? '<div class="text-center text-gray-300 text-sm py-8">对话还没开始，先说点什么吧</div>' : ''}
+          ${state.messages.map(msg => renderMessage(msg)).join('')}
+          ${state.isLoading ? `
+          <div class="flex justify-start">
+            <div class="bg-white border border-gray-100 rounded-2xl px-4 py-3 shadow-sm">
+              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            </div>
+          </div>` : ''}
+          <div id="chat-bottom"></div>
+        </div>
+
+        <!-- 输入区 -->
+        <div class="border-t border-rose-100 bg-white px-4 py-3 flex-shrink-0">
+          ${state.currentQuickOptions.length > 0 && !state.isLoading ? `
+          <div class="flex gap-2 mb-2 overflow-x-auto scrollbar-hide">
+            ${state.currentQuickOptions.map(opt => `
+            <button onclick="sendMsg('${opt.replace(/'/g,'\\\'')}')"
+              class="flex-shrink-0 text-xs bg-rose-50 text-rose-500 border border-rose-200 rounded-full px-3 py-1 hover:bg-rose-100 whitespace-nowrap">
+              ${opt}
+            </button>`).join('')}
+          </div>` : ''}
+          <div class="flex gap-2 items-end">
+            <textarea id="chat-input" rows="1" placeholder="说点什么…"
+              class="flex-1 border border-rose-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-rose-400 resize-none"
+              style="max-height:100px"
+              onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsgFromInput()}"
+            ></textarea>
+            <button onclick="sendMsgFromInput()" ${state.isLoading ? 'disabled' : ''}
+              class="w-10 h-10 rounded-xl bg-rose-400 text-white flex items-center justify-center hover:bg-rose-500 disabled:opacity-40 flex-shrink-0">↑</button>
+          </div>
+          <button onclick="endConv()" ${state.messages.length < 2 ? 'disabled' : ''}
+            class="w-full mt-2 text-xs text-gray-300 hover:text-rose-400 disabled:cursor-not-allowed transition-colors">
+            结束对话并查看复盘 →
+          </button>
+        </div>
+      </div>
+
+      <!-- 侧边栏 -->
+      <div class="w-48 border-l border-rose-100 bg-white overflow-y-auto flex-shrink-0 scrollbar-hide hidden md:block">
+        <div class="p-4 space-y-4">
+          <div>
+            <div class="text-xs font-medium text-gray-400 mb-2">当前走向</div>
+            <div class="text-sm font-medium ${trend.color}">${trend.emoji} ${trend.label}</div>
+          </div>
+          <div>
+            <div class="text-xs font-medium text-gray-400 mb-2">关系温度 ${state.temperature}/100</div>
+            <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div class="h-full rounded-full transition-all ${tc.bar}" style="width:${state.temperature}%"></div>
+            </div>
+          </div>
+          ${state.currentRedFlags.length > 0 ? `
+          <div>
+            <div class="text-xs font-medium text-gray-400 mb-2">⚠️ 雷区提示</div>
+            ${state.currentRedFlags.map(f => `<div class="text-xs bg-red-50 text-red-400 rounded-lg p-2 mb-1 border border-red-100">${f}</div>`).join('')}
+          </div>` : ''}
+          <div>
+            <div class="text-xs font-medium text-gray-400 mb-2">你的表现</div>
+            <div class="text-xs text-gray-500 space-y-1">
+              <div class="flex justify-between"><span>🟢 加分</span><span class="text-green-500 font-medium">${state.messages.filter(m=>m.role==='user'&&m.score==='positive').length}</span></div>
+              <div class="flex justify-between"><span>🟡 中性</span><span class="text-yellow-500 font-medium">${state.messages.filter(m=>m.role==='user'&&m.score==='neutral').length}</span></div>
+              <div class="flex justify-between"><span>🔴 踩雷</span><span class="text-red-400 font-medium">${state.messages.filter(m=>m.role==='user'&&m.score==='negative').length}</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderMessage(msg) {
+  const isUser = msg.role === 'user';
+  const scoreClass = isUser ? (msg.score === 'positive' ? 'ring-2 ring-green-300' : msg.score === 'negative' ? 'ring-2 ring-red-300' : '') : '';
+  const scoreIcon = isUser ? (msg.score === 'positive' ? ' <span class="text-green-200 text-xs">✓</span>' : msg.score === 'negative' ? ' <span class="text-red-200 text-xs">⚠️</span>' : '') : '';
+  const emotionExpanded = state.expandedEmotions.has(msg.id);
+
+  return `
+  <div class="flex ${isUser ? 'justify-end' : 'justify-start'} bubble-in">
+    <div class="max-w-[75%] flex flex-col gap-1 ${isUser ? 'items-end' : 'items-start'}">
+      ${!isUser ? `<span class="text-xs text-gray-400 ml-1">${state.partner.name}</span>` : ''}
+      <div class="px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${isUser ? 'bg-blue-400 text-white' : 'bg-white border border-gray-100 text-gray-800 shadow-sm'} ${scoreClass}">
+        ${msg.content}${scoreIcon}
+      </div>
+      ${!isUser && msg.emotionState ? `
+      <button onclick="toggleEmotion('${msg.id}')" class="text-xs text-rose-300 hover:text-rose-500 ml-1">
+        🧠 ${emotionExpanded ? '收起' : '查看情绪解读'}
+      </button>
+      ${emotionExpanded ? `<div class="bg-rose-50 border border-rose-100 rounded-xl px-3 py-2 text-xs text-rose-500 leading-relaxed max-w-xs">💭 ${msg.emotionState}</div>` : ''}
+      ` : ''}
+    </div>
+  </div>`;
+}
+
+function renderReview() {
+  const r = state.reviewReport;
+  const e = ENDING_CONFIG[r.ending];
+  const badMsgs = r.messages.filter(m => m.role === 'user' && m.score === 'negative');
+
+  return `
+  <div class="min-h-screen bg-[#fdf8f5] pb-8">
+    <div class="max-w-lg mx-auto px-4 pt-6">
+      <!-- 结局 -->
+      <div class="bg-gradient-to-b from-rose-50 to-amber-50 rounded-3xl p-6 text-center mb-6 border border-white shadow-sm">
+        <div class="text-6xl mb-3">${e.emoji}</div>
+        <h1 class="text-2xl font-bold ${e.color} mb-2">${e.title}</h1>
+        <p class="text-gray-500 text-sm leading-relaxed">${e.desc}</p>
+        <div class="mt-4 flex items-center justify-center gap-2">
+          <span class="text-sm text-gray-400">最终关系温度</span>
+          <div class="flex items-center gap-1.5 bg-white rounded-full px-3 py-1 shadow-sm">
+            <div class="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div class="h-full rounded-full bg-rose-400" style="width:${r.finalTemperature}%"></div>
+            </div>
+            <span class="text-xs font-bold text-rose-500">${r.finalTemperature}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 沟通风格 -->
+      <div class="bg-white rounded-2xl p-5 mb-4 border border-rose-100">
+        <h2 class="text-sm font-semibold text-gray-700 mb-3">🧠 你的沟通风格</h2>
+        <p class="text-sm text-gray-600 leading-relaxed">${r.communicationStyleSummary}</p>
+      </div>
+
+      <!-- 建议 -->
+      <div class="bg-white rounded-2xl p-5 mb-4 border border-rose-100">
+        <h2 class="text-sm font-semibold text-gray-700 mb-3">💡 改进建议</h2>
+        <div class="space-y-3">
+          ${r.suggestions.map((s,i) => `
+          <div class="flex gap-3">
+            <div class="w-5 h-5 rounded-full bg-rose-100 text-rose-500 text-xs flex items-center justify-center flex-shrink-0 mt-0.5 font-bold">${i+1}</div>
+            <p class="text-sm text-gray-600 leading-relaxed">${s}</p>
+          </div>`).join('')}
+        </div>
+      </div>
+
+      <!-- 对话回顾 -->
+      <div class="bg-white rounded-2xl p-5 mb-4 border border-rose-100">
+        <h2 class="text-sm font-semibold text-gray-700 mb-3">📋 对话回顾</h2>
+        <div class="space-y-2">
+          ${r.messages.map(msg => {
+            const isUser = msg.role === 'user';
+            const sc = isUser ? (msg.score === 'positive' ? 'bg-green-50 border-green-200 text-green-700' : msg.score === 'negative' ? 'bg-red-50 border-red-200 text-red-600' : 'bg-blue-50 border-blue-200 text-blue-700') : 'bg-gray-50 border-gray-100 text-gray-600';
+            const icon = isUser ? (msg.score === 'positive' ? '🟢' : msg.score === 'negative' ? '🔴' : '🟡') : '';
+            return `
+            <div class="flex ${isUser ? 'justify-end' : 'justify-start'}">
+              <div class="max-w-[80%] px-3 py-2 rounded-xl text-xs border ${sc}">
+                ${!isUser ? `<span class="text-gray-400 mr-1">${state.partner.name}：</span>` : ''}
+                ${msg.content} ${icon}
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+
+      <!-- 改写 -->
+      ${badMsgs.length > 0 ? `
+      <div class="bg-white rounded-2xl p-5 mb-4 border border-rose-100">
+        <h2 class="text-sm font-semibold text-gray-700 mb-1">✏️ 换一种方式说</h2>
+        <p class="text-xs text-gray-400 mb-3">选一句踩雷的话，AI 帮你改写</p>
+        <div class="space-y-2 mb-3">
+          ${badMsgs.map(m => `
+          <button onclick="doRewrite('${m.content.replace(/'/g,'\\\'').replace(/"/g,'&quot;')}')"
+            class="w-full text-left px-3 py-2 rounded-xl text-xs border transition-all ${state.rewriteTarget === m.content ? 'border-rose-400 bg-rose-50 text-rose-700' : 'border-red-100 bg-red-50 text-red-500 hover:border-red-300'}">
+            🔴 "${m.content}"
+          </button>`).join('')}
+        </div>
+        ${state.isRewriting ? '<div class="text-xs text-rose-400 text-center py-2 animate-pulse">AI 正在改写中…</div>' : ''}
+        ${state.rewriteResult && !state.isRewriting ? `
+        <div class="bg-green-50 border border-green-200 rounded-xl p-3">
+          <div class="text-xs text-green-600 font-medium mb-1">💬 更好的表达方式：</div>
+          <div class="text-sm text-green-700 leading-relaxed">"${state.rewriteResult}"</div>
+        </div>` : ''}
+      </div>` : ''}
+
+      <!-- 按钮 -->
+      <div class="flex gap-3">
+        <button onclick="retryChat()" class="flex-1 py-3 rounded-xl border border-rose-300 text-rose-500 text-sm font-medium hover:bg-rose-50">换种说法再试</button>
+        <button onclick="resetAll()" class="flex-1 py-3 rounded-xl bg-rose-400 text-white text-sm font-medium hover:bg-rose-500">重新开始</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ============ EVENTS ============
+function bindEvents() {}
+
+window.saveApiKey = () => {
+  const val = document.getElementById('api-key-input')?.value?.trim();
+  if (val) { state.apiKey = val; localStorage.setItem('gemini_key', val); render(); }
+};
+window.clearApiKey = () => { state.apiKey = ''; localStorage.removeItem('gemini_key'); render(); };
+window.setPartner = (key, val) => { state.partner[key] = val; render(); };
+window.goStep2 = () => {
+  const name = document.getElementById('partner-name')?.value?.trim();
+  const extra = document.getElementById('partner-extra')?.value?.trim();
+  if (name) state.partner.name = name;
+  state.partner.extraDescription = extra || '';
+  state.setupStep = 2;
+  render();
+};
+window.selectScene = (id) => { state.selectedSceneId = id; state.isCustomScene = false; render(); };
+window.startChat = () => {
+  if (state.isCustomScene) {
+    const txt = document.getElementById('custom-scene')?.value?.trim();
+    if (!txt) return;
+    state.customSceneText = txt;
+    state.scene = { type:'custom', description: txt };
+  } else {
+    const s = PRESET_SCENES.find(x => x.id === state.selectedSceneId);
+    if (!s) return;
+    state.scene = { type:'preset', description: s.desc };
+  }
+  state.messages = [];
+  state.temperature = 50;
+  state.conversationTrend = 'neutral';
+  state.currentRedFlags = [];
+  state.currentQuickOptions = ['安慰一下对方','坦诚说明情况','先道歉再解释'];
+  state.reviewReport = null;
+  state.page = 'chat';
+  render();
+};
+window.sendMsgFromInput = () => {
+  const input = document.getElementById('chat-input');
+  if (input) { sendMessage(input.value); input.value = ''; }
+};
+window.sendMsg = (text) => sendMessage(text);
+window.endConv = () => endConversation();
+window.toggleEmotion = (id) => {
+  if (state.expandedEmotions.has(id)) state.expandedEmotions.delete(id);
+  else state.expandedEmotions.add(id);
+  render();
+};
+window.doRewrite = (text) => rewriteMessage(text);
+window.retryChat = () => { state.page = 'chat'; state.messages = []; state.temperature = 50; state.reviewReport = null; render(); };
+window.resetAll = () => { state.page = 'setup'; state.setupStep = 1; state.messages = []; state.temperature = 50; state.scene = null; state.selectedSceneId = ''; state.isCustomScene = false; state.reviewReport = null; render(); };
+
+// 初始化
+render();
+</script>
+</body>
+</html>
