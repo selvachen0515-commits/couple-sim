@@ -5,33 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>逛展护照 🎫</title>
 <style>
-/* === 莫奈·莫兰迪融合配色 === */
-/* 主色板：雾紫 #e8e0ec / 藕粉 #e9d5d8 / 薄荷灰 #c8ddd5 / 芥末绿 #b5c4a8 / 暖米 #ede8df */
+/* === 莫兰迪波点背景配色 === */
 *{box-sizing:border-box;margin:0;padding:0;}
 body{
   color:#3d3545;
   font-family:'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
   min-height:100vh;
-  background-color:#dfd8e8;
+  background-color:#ede8e4;
+  /* 莫兰迪波点：低饱和粉紫+薄荷+藕色交织 */
   background-image:
-    radial-gradient(ellipse 70% 55% at 15% 10%, rgba(210,190,225,0.8) 0%, transparent 55%),
-    radial-gradient(ellipse 50% 45% at 85% 15%, rgba(195,220,210,0.6) 0%, transparent 50%),
-    radial-gradient(ellipse 60% 50% at 50% 90%, rgba(225,205,215,0.7) 0%, transparent 55%),
-    radial-gradient(ellipse 40% 35% at 80% 60%, rgba(185,210,200,0.5) 0%, transparent 45%),
-    radial-gradient(ellipse 35% 30% at 20% 70%, rgba(215,195,228,0.6) 0%, transparent 40%);
-}
-/* 莫奈睡莲水波纹光斑 */
-body::before{
-  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
-  background-image:
-    radial-gradient(60px 40px at 20% 30%, rgba(255,220,230,0.35) 0%, transparent 100%),
-    radial-gradient(80px 50px at 70% 20%, rgba(180,220,200,0.3) 0%, transparent 100%),
-    radial-gradient(50px 35px at 40% 65%, rgba(200,185,220,0.28) 0%, transparent 100%),
-    radial-gradient(70px 45px at 85% 75%, rgba(220,230,200,0.25) 0%, transparent 100%),
-    radial-gradient(45px 30px at 10% 80%, rgba(240,210,215,0.3) 0%, transparent 100%),
-    radial-gradient(90px 60px at 60% 45%, rgba(195,215,210,0.2) 0%, transparent 100%),
-    radial-gradient(40px 28px at 30% 10%, rgba(225,200,230,0.3) 0%, transparent 100%),
-    radial-gradient(55px 38px at 90% 40%, rgba(185,225,205,0.25) 0%, transparent 100%);
+    radial-gradient(circle, rgba(195,178,210,0.55) 1.5px, transparent 1.5px),
+    radial-gradient(circle, rgba(168,200,188,0.45) 1px, transparent 1px),
+    radial-gradient(circle, rgba(215,195,200,0.4) 1.2px, transparent 1.2px);
+  background-size: 28px 28px, 18px 18px, 38px 38px;
+  background-position: 0 0, 9px 9px, 5px 14px;
 }
 #app{position:relative;z-index:1;}
 input,textarea,button{font-family:inherit;}
@@ -100,8 +87,9 @@ textarea{resize:none;}
 
 /* 徽章 */
 .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;}
-.badge-green{background:rgba(16,185,129,0.2);color:#6ee7b7;}
-.badge-rose{background:rgba(244,63,94,0.15);color:#fda4af;}
+.badge-green{background:rgba(100,180,140,0.18);color:#3a8a62;}
+.badge-rose{background:rgba(155,126,184,0.15);color:#7a5e8a;}
+.mb10{margin-bottom:10px;}.mb14{margin-bottom:14px;}
 
 /* fade in */
 @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
@@ -265,12 +253,22 @@ function initData(){
     user:null,setupDone:false,tab:'discover',
     exhibits:JSON.parse(JSON.stringify(PRESET_EXHIBITS)),
     reviews:JSON.parse(JSON.stringify(DEMO_REVIEWS)),
-    passport:{checkins:[],stamps:[]}
+    passport:{checkins:[],stamps:[]},
+    _demoRev:'v3' // 版本号，用于强制更新demo评价
   };
 }
 let data;
-try{data=JSON.parse(localStorage.getItem('zl2_data')||'null')||initData();}
-catch(e){data=initData();}
+try{
+  data=JSON.parse(localStorage.getItem('zl2_data')||'null')||initData();
+  // 强制注入最新demo评价（版本不匹配时）
+  if(data._demoRev !== 'v3'){
+    const userRevIds = new Set(data.reviews.filter(r=>!r.id.startsWith('dr')).map(r=>r.id));
+    const userRevs = data.reviews.filter(r=>!r.id.startsWith('dr'));
+    data.reviews = [...JSON.parse(JSON.stringify(DEMO_REVIEWS)), ...userRevs];
+    data._demoRev = 'v3';
+    save();
+  }
+}catch(e){data=initData();}
 
 // ===== 工具 =====
 function $(id){return document.getElementById(id);}
@@ -350,53 +348,90 @@ window.finishSetup=()=>{
 };
 
 // ===== 发现页 =====
-let _fType='',_fCity='',_fQ='';
-function renderDiscover(){
-  const cities=[...new Set(data.exhibits.map(e=>e.city))];
-  const list=data.exhibits.filter(e=>{
+let _fType='',_fCity='',_fQ='',_fSort='hot';
+
+// 虚拟距离（公里）
+const MOCK_DIST={e1:2.3,e2:1205,e3:3.1,e4:1820,e5:1208,e6:1760,e7:1980,e8:1.8,e9:1640,e10:1280,e11:1350,e12:1762,e13:1250,e14:1680,e15:1720,e16:1960};
+
+function getFilteredSorted(){
+  let list=data.exhibits.filter(e=>{
     if(_fType&&e.type!==_fType)return false;
     if(_fCity&&e.city!==_fCity)return false;
-    if(_fQ&&!e.name.includes(_fQ)&&!e.venue.includes(_fQ))return false;
+    if(_fQ&&!e.name.includes(_fQ)&&!e.venue.includes(_fQ)&&!e.city.includes(_fQ))return false;
     return true;
   });
+  if(_fSort==='rating') list=[...list].sort((a,b)=>parseFloat(avgRating(b.id)||0)-parseFloat(avgRating(a.id)||0));
+  else if(_fSort==='reviews') list=[...list].sort((a,b)=>getRevs(b.id).length-getRevs(a.id).length);
+  else if(_fSort==='dist') list=[...list].sort((a,b)=>(MOCK_DIST[a.id]||999)-(MOCK_DIST[b.id]||999));
+  else list=[...list].sort((a,b)=>(getRevs(b.id).length*2+parseFloat(avgRating(b.id)||0)*3)-(getRevs(a.id).length*2+parseFloat(avgRating(a.id)||0)*3));
+  return list;
+}
+
+function renderDiscover(){
+  const cities=[...new Set(data.exhibits.map(e=>e.city))];
+  const list=getFilteredSorted();
   return `
   <div>
     <div class="flex items-center justify-between mb8">
       <h2>发现展览</h2>
-      <span class="muted fs12">${data.exhibits.length} 个展览</span>
+      <span class="muted fs12">${list.length}/${data.exhibits.length}</span>
     </div>
-    <p style="font-size:11px;color:rgba(160,180,255,0.3);margin-bottom:14px;">* 展览信息与评价均为虚构示例，待实装真实数据</p>
-    <div class="relative mb12">
-      <input type="text" id="search-q" placeholder="搜索展览或场馆…" value="${_fQ}" oninput="filterChange()">
+    <p style="font-size:11px;color:rgba(110,90,130,0.35);margin-bottom:12px;">* 展览信息与评价均为虚构示例，待实装真实数据</p>
+
+    <div class="relative mb10">
+      <input type="text" id="search-q" placeholder="搜索展览名称、场馆或城市…" value="${_fQ}"
+        oninput="onSearchInput(this.value)">
     </div>
+
+    <!-- 城市筛选 -->
+    <div class="scroll-x mb8"><div class="flex-row" id="city-row">
+      <button class="btn-sm ${!_fCity?'active':''}" onclick="setCity('')">全部城市</button>
+      ${cities.map(c=>`<button class="btn-sm ${_fCity===c?'active':''}" onclick="setCity('${c}')">${c}</button>`).join('')}
+    </div></div>
+
+    <!-- 类型筛选 -->
     <div class="scroll-x mb8"><div class="flex-row">
-      <button class="btn-sm ${!_fCity?'active':''}" onclick="_fCity='';filterChange()">全部城市</button>
-      ${cities.map(c=>`<button class="btn-sm ${_fCity===c?'active':''}" onclick="_fCity='${c}';filterChange()">${c}</button>`).join('')}
+      <button class="btn-sm ${!_fType?'active-amber':''}" onclick="setType('')">全类型</button>
+      ${EXHIBIT_TYPES.map(t=>`<button class="btn-sm ${_fType===t?'active-amber':''}" onclick="setType('${t}')">${t}</button>`).join('')}
     </div></div>
-    <div class="scroll-x mb16"><div class="flex-row">
-      <button class="btn-sm ${!_fType?'active-amber':''}" onclick="_fType='';filterChange()">全类型</button>
-      ${EXHIBIT_TYPES.slice(0,8).map(t=>`<button class="btn-sm ${_fType===t?'active-amber':''}" onclick="_fType='${t}';filterChange()">${t}</button>`).join('')}
-    </div></div>
+
+    <!-- 排序按钮 -->
+    <div class="flex mb14" style="gap:6px;flex-wrap:wrap;">
+      ${[['hot','🔥热度'],['rating','⭐评分'],['reviews','💬评价数'],['dist','📍距离']].map(([k,l])=>`
+      <button onclick="setSort('${k}')"
+        style="padding:5px 12px;border-radius:16px;font-size:12px;border:1px solid ${_fSort===k?'rgba(155,126,184,0.6)':'rgba(180,165,200,0.3)'};background:${_fSort===k?'rgba(155,126,184,0.18)':'rgba(255,252,255,0.5)'};color:${_fSort===k?'#7a5e8a':'rgba(100,85,120,0.55)'};cursor:pointer;transition:all 0.15s;">
+        ${l}${_fSort===k?' ▾':''}
+      </button>`).join('')}
+    </div>
+
     <div id="ex-list">${renderExList(list)}</div>
   </div>`;
 }
-window.filterChange=()=>{_fQ=$('search-q')?.value||'';const el=$('ex-list');if(el){const list=data.exhibits.filter(e=>{if(_fType&&e.type!==_fType)return false;if(_fCity&&e.city!==_fCity)return false;if(_fQ&&!e.name.includes(_fQ)&&!e.venue.includes(_fQ))return false;return true;});el.innerHTML=renderExList(list);}};
+
+window.onSearchInput=v=>{_fQ=v;refreshList();};
+window.setCity=c=>{_fCity=c;render();};
+window.setType=t=>{_fType=t;render();};
+window.setSort=s=>{_fSort=s;render();};
+function refreshList(){const el=$('ex-list');if(el)el.innerHTML=renderExList(getFilteredSorted());};
 function renderExList(list){
-  if(!list.length)return`<div class="text-center muted" style="padding:48px 0;">没有找到符合条件的展览</div>`;
+  if(!list.length)return`<div class="text-center muted" style="padding:48px 0;font-size:14px;">没有找到符合条件的展览</div>`;
   return list.map(e=>{
     const avg=avgRating(e.id),cnt=getRevs(e.id).length,chk=!!getCheckin(e.id);
+    const dist=MOCK_DIST[e.id];
+    const distStr=dist?(dist<10?`${dist}km`:dist<100?`${dist}km`:`${(dist/1000).toFixed(1)}千km`):'';
     return`<div class="exhibit-card" onclick="openEx('${e.id}')">
       <div class="flex items-center gap12">
         <div class="exhibit-icon">${e.cover}</div>
         <div class="flex-1" style="min-width:0;">
-          <div class="flex items-center gap8 mb8">
+          <div class="flex items-center gap8" style="margin-bottom:5px;">
             <span class="bold fs14 truncate flex-1">${e.name}</span>
-            ${chk?'<span class="badge badge-green">✓已逛</span>':''}
+            ${chk?'<span class="badge badge-green" style="flex-shrink:0;">✓已逛</span>':''}
           </div>
-          <div class="muted fs12 mb8 truncate">${e.venue}</div>
-          <div class="flex items-center gap8">
-            <span class="badge" style="background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.5);">${e.type}</span>
-            ${avg>0?`<span class="text-amber fs12">★ ${avg}</span><span class="muted-sm">(${cnt})</span>`:'<span class="muted-sm">暂无评分</span>'}
+          <div class="muted fs12 truncate" style="margin-bottom:6px;">${e.venue}</div>
+          <div class="flex items-center" style="gap:6px;flex-wrap:wrap;">
+            <span style="padding:2px 8px;border-radius:10px;font-size:11px;background:rgba(155,126,184,0.12);color:rgba(100,80,120,0.65);">${e.type}</span>
+            ${avg>0?`<span style="color:#c8945a;font-size:12px;">★ ${avg}</span><span class="muted-sm">(${cnt}条)</span>`:'<span class="muted-sm">暂无评分</span>'}
+            ${distStr?`<span style="color:rgba(100,80,120,0.4);font-size:11px;">📍${distStr}</span>`:''}
           </div>
         </div>
       </div>
