@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>薯宫 🍠 — 你的时光树洞</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+<style>
+* { font-family: 'Noto Sans SC', sans-serif; }
+body { background: #1a1a2e; min-height: 100vh; }
+
+.handwriting { font-family: 'Ma Shan Zheng', cursive; }
+
+/* 星空背景 */
+.stars { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+.star { position: absolute; border-radius: 50%; background: white; animation: twinkle var(--dur, 3s) ease-in-out infinite; opacity: var(--op, 0.6); }
+@keyframes twinkle { 0%,100%{opacity:var(--op);transform:scale(1)} 50%{opacity:0.1;transform:scale(0.5)} }
+
+/* 卡片浮现 */
+.fade-in { animation: fadeIn 0.4s ease; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+
+/* 信封打开 */
+.envelope { cursor: pointer; transition: transform 0.3s; }
+.envelope:hover { transform: translateY(-4px) rotate(-1deg); }
+
+/* 红薯抖动 */
+@keyframes wiggle { 0%,100%{transform:rotate(-3deg)} 50%{transform:rotate(3deg)} }
+.wiggle { animation: wiggle 0.5s ease-in-out 3; }
+
+/* 进度条 */
+.progress-bar { transition: width 0.8s cubic-bezier(0.34,1.56,0.64,1); }
+
+/* 信纸纹理 */
+.paper {
+  background: #fdfaf3;
+  background-image: repeating-linear-gradient(transparent, transparent 27px, #e8e0d0 27px, #e8e0d0 28px);
+  line-height: 28px;
+}
+
+/* 粒子 */
+@keyframes float-up { 0%{opacity:1;transform:translateY(0) scale(1)} 100%{opacity:0;transform:translateY(-80px) scale(0.3)} }
+.particle { position:fixed; pointer-events:none; animation: float-up 1.5s ease-out forwards; font-size:24px; z-index:999; }
+
+/* 徽章闪光 */
+@keyframes shine { 0%,100%{filter:brightness(1)} 50%{filter:brightness(1.4)} }
+.badge-shine { animation: shine 2s ease-in-out infinite; }
+
+/* 模态框 */
+.modal-overlay { position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;display:flex;align-items:center;justify-content:center;padding:16px; }
+
+/* 通知条 */
+.toast { position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:200;padding:12px 24px;border-radius:24px;font-size:14px;animation:fadeIn 0.3s ease; }
+
+/* 滚动条 */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #4a3f6b; border-radius: 4px; }
+
+/* tab激活 */
+.tab-active { background: linear-gradient(135deg, #9333ea, #ec4899); color: white; }
+</style>
+</head>
+<body class="text-white">
+
+<!-- 星空 -->
+<div class="stars" id="stars"></div>
+
+<div id="app" class="relative z-10"></div>
+<div id="modals"></div>
+<div id="toasts"></div>
+
+<script>
+// ========== 数据初始化 ==========
+function loadData() {
+  try {
+    return JSON.parse(localStorage.getItem('shugong_data') || 'null') || getDefaultData();
+  } catch { return getDefaultData(); }
+}
+function getDefaultData() {
+  return {
+    user: { name: '', avatar: '🍠', joined: Date.now() },
+    letters: [],
+    plant: {
+      stage: 0, // 0=种子 1=发芽 2=幼苗 3=生长 4=开花 5=成熟
+      form: Math.floor(Math.random() * 10), // 红薯形态 0-9
+      water: 0,
+      fertilizer: 0,
+      totalPoints: 0,
+      lastWatered: null,
+      name: '',
+    },
+    checkins: [], // {date, type, duration, points}
+    unlockedForms: [0],
+    tab: 'home',
+    setupDone: false,
+  };
+}
+function saveData() { localStorage.setItem('shugong_data', JSON.stringify(data)); }
+
+let data = loadData();
+
+// ========== 红薯形态图鉴 ==========
+const SWEET_POTATO_FORMS = [
+  { id:0, name:'普通红薯', emoji:'🍠', desc:'最朴实的存在，但内心满是温暖', rarity:'普通', color:'#cd853f' },
+  { id:1, name:'紫心薯', emoji:'💜', desc:'外表低调，内心深处有独特的紫色宇宙', rarity:'普通', color:'#8b5cf6' },
+  { id:2, name:'雪白薯', emoji:'🤍', desc:'纯洁如初雪，承载着最初的心愿', rarity:'稀有', color:'#e5e7eb' },
+  { id:3, name:'金薯', emoji:'✨', desc:'历经岁月沉淀，每一道纹路都是故事', rarity:'稀有', color:'#f59e0b' },
+  { id:4, name:'星空薯', emoji:'🌌', desc:'夜里仰望星空时，它悄悄记住了你的心愿', rarity:'稀有', color:'#3b82f6' },
+  { id:5, name:'玫瑰薯', emoji:'🌹', desc:'用爱浇灌出的，带着花香的红薯', rarity:'珍稀', color:'#ec4899' },
+  { id:6, name:'森林薯', emoji:'🌿', desc:'在自律的土壤里生长，绿意盎然', rarity:'珍稀', color:'#10b981' },
+  { id:7, name:'云朵薯', emoji:'☁️', desc:'轻盈如云，装载着写给未来的所有梦', rarity:'珍稀', color:'#93c5fd' },
+  { id:8, name:'彩虹薯', emoji:'🌈', desc:'历经风雨方见彩虹，你做到了', rarity:'传说', color:'#f97316' },
+  { id:9, name:'月光薯', emoji:'🌙', desc:'只在最安静的深夜，才会微微发光', rarity:'传说', color:'#a78bfa' },
+];
+
+const PLANT_STAGES = [
+  { name:'红薯种子', emoji:'🌰', desc:'万物始于一粒种子', threshold:0 },
+  { name:'破土而出', emoji:'🌱', desc:'努力向上，刚刚探出头来', threshold:10 },
+  { name:'幼苗期', emoji:'🌿', desc:'正在茁壮成长中', threshold:30 },
+  { name:'生长期', emoji:'🪴', desc:'枝繁叶茂，充满活力', threshold:60 },
+  { name:'开花了！', emoji:'🌸', desc:'坚持的力量开出了花', threshold:100 },
+  { name:'红薯成熟', emoji:'🍠', desc:'你的红薯长大了', threshold:150 },
+];
+
+const CHECKIN_TYPES = [
+  { id:'exercise', label:'健康运动', emoji:'🏃', desc:'跑步、健身、瑜伽……', points:15, items:['散步30分钟','跑步','健身房','瑜伽/冥想','骑行','游泳'] },
+  { id:'study', label:'学习成长', emoji:'📚', desc:'读书、课程、技能练习……', points:12, items:['读书30分钟','在线课程','写作练习','语言学习','专业技能','复盘笔记'] },
+  { id:'family', label:'陪伴家人', emoji:'👨‍👩‍👧', desc:'陪父母、家人……', points:15, items:['陪父母聊天','家庭聚餐','给家人打电话','帮做家务','陪孩子玩'] },
+  { id:'digital_detox', label:'防沉迷冲浪', emoji:'📵', desc:'小红书30分钟内/戒除刷手机……', points:20, items:['小红书≤30min','关掉通知专注2h','不刷手机睡前1h','读纸质书替代刷机','户外活动代替刷屏'] },
+  { id:'sleep', label:'早睡早起', emoji:'😴', desc:'23点前入睡，7点前起床……', points:10, items:['23点前入睡','7点前起床','午休20分钟','冥想助眠','规律作息一周'] },
+  { id:'creative', label:'创意输出', emoji:'🎨', desc:'绘画、写作、音乐……', points:12, items:['手账记录','绘画/插画','写日记','弹乐器','拍照/剪辑'] },
+];
+
+const LETTER_TYPES = [
+  { id:'emo', label:'情绪胶囊', emoji:'💭', color:'from-purple-600 to-indigo-600', desc:'此刻流淌的感受，留给未来的自己' },
+  { id:'goal', label:'目标宣言', emoji:'🎯', color:'from-rose-500 to-orange-400', desc:'写下你的目标，让未来的你来检验' },
+  { id:'secret', label:'悄悄话', emoji:'🤫', color:'from-emerald-500 to-teal-400', desc:'不想被现在的人知道的秘密' },
+  { id:'wish', label:'心愿清单', emoji:'⭐', color:'from-amber-400 to-yellow-300', desc:'列下你想实现的一切' },
+  { id:'letter', label:'普通信件', emoji:'📝', color:'from-blue-500 to-cyan-400', desc:'就是想写点什么' },
+];
+
+const DELIVERY_PROMPTS = {
+  emo: [
+    '还记得写下这段文字时，心里是什么感受吗？',
+    '那段情绪，现在看来还沉重吗？',
+    '过去的那个你，正在经历一些事……你现在还好吗？',
+  ],
+  goal: [
+    '当初许下的那个诺言，你实现了吗？',
+    '那时候的目标，现在回看，是太大了还是太小了？',
+    '过去的你把这个愿望交给了现在的你，交接仪式开始了。',
+  ],
+  secret: [
+    '那个只有你知道的秘密，现在还是秘密吗？',
+    '悄悄话收到了。你当时藏在心里的那些话……',
+    '有些话，说给未来的自己听，刚刚好。',
+  ],
+  wish: [
+    '打开清单，数一数，实现了几个？',
+    '心愿清单到期了。有些愿望，实现了；有些，可能换了方向。',
+    '当初的你，攥着这张清单，眼里有光。现在呢？',
+  ],
+  letter: [
+    '有一封信，从过去飞来，专程给你的。',
+    '写信的那天，你一定有很多话想说。',
+    '跨越时光的信，终于到了。',
+  ],
+};
+
+// ========== 工具函数 ==========
+function formatDate(ts) {
+  const d = new Date(ts);
+  return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`;
+}
+function daysUntil(ts) {
+  const diff = ts - Date.now();
+  return Math.max(0, Math.ceil(diff / 86400000));
+}
+function isToday(ts) {
+  const d = new Date(ts), t = new Date();
+  return d.getFullYear()===t.getFullYear() && d.getMonth()===t.getMonth() && d.getDate()===t.getDate();
+}
+function getStage(points) {
+  for (let i = PLANT_STAGES.length-1; i >= 0; i--) {
+    if (points >= PLANT_STAGES[i].threshold) return i;
+  }
+  return 0;
+}
+function getProgress(points) {
+  const stage = getStage(points);
+  if (stage >= PLANT_STAGES.length-1) return 100;
+  const cur = PLANT_STAGES[stage].threshold;
+  const next = PLANT_STAGES[stage+1].threshold;
+  return Math.round((points - cur) / (next - cur) * 100);
+}
+
+// ========== 星空生成 ==========
+function generateStars() {
+  const container = document.getElementById('stars');
+  for (let i = 0; i < 120; i++) {
+    const star = document.createElement('div');
+    star.className = 'star';
+    const size = Math.random() * 2.5 + 0.5;
+    star.style.cssText = `
+      width:${size}px;height:${size}px;
+      left:${Math.random()*100}%;top:${Math.random()*100}%;
+      --dur:${2+Math.random()*4}s;
+      --op:${0.3+Math.random()*0.7};
+      animation-delay:${Math.random()*4}s;
+    `;
+    container.appendChild(star);
+  }
+}
+
+// ========== Toast ==========
+function showToast(msg, type='success') {
+  const el = document.createElement('div');
+  el.className = `toast ${type==='success'?'bg-emerald-600':'type==="error"?bg-red-600:bg-purple-600'}`;
+  el.style.cssText = `background:${type==='success'?'#059669':type==='error'?'#dc2626':'#7c3aed'}`;
+  el.textContent = msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(()=>el.remove(), 2500);
+}
+
+// ========== 粒子特效 ==========
+function spawnParticles(emoji, x, y, count=6) {
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement('div');
+    el.className = 'particle';
+    el.textContent = emoji;
+    el.style.cssText = `left:${x + (Math.random()-0.5)*80}px;top:${y}px;animation-delay:${Math.random()*0.3}s`;
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(), 2000);
+  }
+}
+
+// ========== 检查到期信件 ==========
+function checkArrivedLetters() {
+  const arrived = data.letters.filter(l => !l.opened && !l.archived && l.deliverAt <= Date.now());
+  return arrived;
+}
+
+// ========== 主渲染 ==========
+function render() {
+  if (!data.setupDone) { renderSetup(); return; }
+  const arrived = checkArrivedLetters();
+  document.getElementById('app').innerHTML = `
+    ${arrived.length > 0 ? renderArrivalBanner(arrived) : ''}
+    ${renderNav()}
+    <div class="max-w-lg mx-auto px-4 pb-24 pt-4">
+      ${data.tab==='home' ? renderHome() : ''}
+      ${data.tab==='write' ? renderWrite() : ''}
+      ${data.tab==='mailbox' ? renderMailbox() : ''}
+      ${data.tab==='garden' ? renderGarden() : ''}
+      ${data.tab==='checkin' ? renderCheckin() : ''}
+    </div>
+  `;
+}
+
+// ========== 设置页 ==========
+function renderSetup() {
+  document.getElementById('app').innerHTML = `
+  <div class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-sm fade-in">
+      <div class="text-center mb-8">
+        <div class="text-7xl mb-4 animate-bounce">🍠</div>
+        <h1 class="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">薯宫</h1>
+        <p class="text-purple-300 mt-2 text-sm">你的私密时光树洞</p>
+      </div>
+      <div class="bg-white/10 backdrop-blur rounded-3xl p-6 border border-white/20">
+        <h2 class="text-lg font-medium mb-4 text-center">给这里的你，起个名字</h2>
+        <input id="setup-name" type="text" maxlength="12" placeholder="你的昵称……"
+          class="w-full bg-white/10 border border-white/20 rounded-2xl px-4 py-3 text-center text-lg outline-none focus:border-purple-400 placeholder-white/30 mb-4">
+        <div class="mb-4">
+          <p class="text-sm text-white/60 mb-2 text-center">选一个头像</p>
+          <div class="grid grid-cols-6 gap-2">
+            ${['🍠','🌙','⭐','🌸','🦋','🌈','🐱','🦊','🌿','🎨','📚','🎵'].map(e=>`
+            <button onclick="selectAvatar('${e}')"
+              class="text-2xl p-2 rounded-xl transition-all ${data.user.avatar===e?'bg-purple-500 scale-110':'bg-white/10 hover:bg-white/20'}">${e}</button>`).join('')}
+          </div>
+        </div>
+        <button onclick="finishSetup()"
+          class="w-full py-3 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 font-medium hover:opacity-90 transition-opacity">
+          种下我的第一颗红薯种子 🌰
+        </button>
+      </div>
+      <p class="text-center text-white/30 text-xs mt-4">所有数据存储在你的本地设备，不会上传到任何地方</p>
+    </div>
+  </div>`;
+}
+
+// ========== 到达横幅 ==========
+function renderArrivalBanner(arrived) {
+  return `
+  <div class="bg-gradient-to-r from-purple-600/80 to-pink-600/80 backdrop-blur border-b border-white/20 px-4 py-3 cursor-pointer"
+    onclick="setTab('mailbox')">
+    <div class="flex items-center gap-3 max-w-lg mx-auto">
+      <div class="text-2xl animate-bounce">📬</div>
+      <div class="flex-1">
+        <div class="text-sm font-medium">有 ${arrived.length} 封信从过去飞来了</div>
+        <div class="text-xs text-white/70">${getRandomPrompt(arrived[0]?.type || 'letter')}</div>
+      </div>
+      <div class="text-white/60 text-xs">点击查看 →</div>
+    </div>
+  </div>`;
+}
+
+function getRandomPrompt(type) {
+  const prompts = DELIVERY_PROMPTS[type] || DELIVERY_PROMPTS.letter;
+  return prompts[Math.floor(Math.random() * prompts.length)];
+}
+
+// ========== 导航 ==========
+function renderNav() {
+  const tabs = [
+    {id:'home', label:'首页', emoji:'🏠'},
+    {id:'write', label:'写信', emoji:'✍️'},
+    {id:'mailbox', label:'信箱', emoji:'📬'},
+    {id:'garden', label:'薯园', emoji:'🌱'},
+    {id:'checkin', label:'打卡', emoji:'⏰'},
+  ];
+  return `
+  <nav class="fixed bottom-0 left-0 right-0 bg-black/60 backdrop-blur border-t border-white/10 z-50">
+    <div class="flex max-w-lg mx-auto">
+      ${tabs.map(t=>`
+      <button onclick="setTab('${t.id}')"
+        class="flex-1 flex flex-col items-center py-3 transition-all ${data.tab===t.id?'text-purple-400':'text-white/40 hover:text-white/70'}">
+        <span class="text-xl">${t.emoji}</span>
+        <span class="text-xs mt-0.5">${t.label}</span>
+        ${t.id==='mailbox' && checkArrivedLetters().length>0 ? '<span class="absolute mt-[-20px] ml-4 w-2 h-2 bg-rose-500 rounded-full"></span>':''}
+      </button>`).join('')}
+    </div>
+  </nav>`;
+}
+
+// ========== 首页 ==========
+function renderHome() {
+  const stage = getStage(data.plant.totalPoints);
+  const stageInfo = PLANT_STAGES[stage];
+  const form = SWEET_POTATO_FORMS[data.plant.form];
+  const arrived = checkArrivedLetters();
+  const todayCheckins = data.checkins.filter(c => isToday(c.timestamp));
+  const totalLetters = data.letters.length;
+  const progress = getProgress(data.plant.totalPoints);
+
+  return `
+  <div class="space-y-4 fade-in">
+    <!-- 欢迎卡 -->
+    <div class="bg-gradient-to-br from-purple-900/60 to-indigo-900/60 backdrop-blur rounded-3xl p-5 border border-white/10">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-3">
+          <div class="text-3xl">${data.user.avatar}</div>
+          <div>
+            <div class="font-medium">${data.user.name || '薯友'}</div>
+            <div class="text-xs text-white/50">在薯宫种下了 ${totalLetters} 封信</div>
+          </div>
+        </div>
+        <div class="text-right">
+          <div class="text-2xl">${stageInfo.emoji}</div>
+          <div class="text-xs text-white/50">${stageInfo.name}</div>
+        </div>
+      </div>
+      <!-- 成长进度 -->
+      <div class="bg-white/10 rounded-full h-2 overflow-hidden">
+        <div class="progress-bar h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full" style="width:${progress}%"></div>
+      </div>
+      <div class="flex justify-between text-xs text-white/40 mt-1">
+        <span>${stageInfo.name}</span>
+        <span>${data.plant.totalPoints} 积分 · 进度 ${progress}%</span>
+        ${stage < PLANT_STAGES.length-1 ? `<span>${PLANT_STAGES[stage+1].name}</span>` : '<span>已满级！</span>'}
+      </div>
+    </div>
+
+    <!-- 快捷入口 -->
+    <div class="grid grid-cols-2 gap-3">
+      <button onclick="setTab('write')"
+        class="bg-gradient-to-br from-rose-600/60 to-purple-600/60 backdrop-blur rounded-2xl p-4 border border-white/10 text-left hover:opacity-80 transition-opacity">
+        <div class="text-2xl mb-2">✍️</div>
+        <div class="font-medium text-sm">写一封信</div>
+        <div class="text-xs text-white/50 mt-1">留给未来的自己</div>
+      </button>
+      <button onclick="setTab('checkin')"
+        class="bg-gradient-to-br from-emerald-600/60 to-teal-600/60 backdrop-blur rounded-2xl p-4 border border-white/10 text-left hover:opacity-80 transition-opacity">
+        <div class="text-2xl mb-2">⏰</div>
+        <div class="font-medium text-sm">今日打卡</div>
+        <div class="text-xs text-white/50 mt-1">已打卡 ${todayCheckins.length} 次</div>
+      </button>
+    </div>
+
+    <!-- 到期信件提醒 -->
+    ${arrived.length > 0 ? `
+    <div class="bg-gradient-to-br from-amber-600/40 to-rose-600/40 backdrop-blur rounded-2xl p-4 border border-amber-400/30 cursor-pointer" onclick="setTab('mailbox')">
+      <div class="flex items-center gap-3">
+        <div class="text-3xl">📬</div>
+        <div>
+          <div class="font-medium text-amber-200">有 ${arrived.length} 封信在等你</div>
+          <div class="text-xs text-white/60">${getRandomPrompt(arrived[0]?.type || 'letter')}</div>
+        </div>
+      </div>
+    </div>` : ''}
+
+    <!-- 最近的信 -->
+    ${data.letters.length > 0 ? `
+    <div class="bg-white/5 backdrop-blur rounded-2xl p-4 border border-white/10">
+      <div class="flex justify-between items-center mb-3">
+        <span class="text-sm font-medium text-white/70">最近的信</span>
+        <button onclick="setTab('mailbox')" class="text-xs text-purple-400">全部 →</button>
+      </div>
+      ${data.letters.slice(-3).reverse().map(l => {
+        const lt = LETTER_TYPES.find(x=>x.id===l.type) || LETTER_TYPES[4];
+        const isArrived = l.deliverAt <= Date.now() && !l.opened;
+        return `
+        <div class="flex items-center gap-3 py-2 border-b border-white/5 last:border-0">
+          <span class="text-xl">${lt.emoji}</span>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm truncate">${l.title || '无标题'}</div>
+            <div class="text-xs text-white/40">${isArrived ? '📬 已到达' : `⏳ ${daysUntil(l.deliverAt)} 天后到达`}</div>
+          </div>
+          ${isArrived ? '<span class="w-2 h-2 bg-rose-400 rounded-full flex-shrink-0"></span>' : ''}
+        </div>`;
+      }).join('')}
+    </div>` : `
+    <div class="bg-white/5 backdrop-blur rounded-2xl p-6 border border-white/10 text-center">
+      <div class="text-4xl mb-2">📭</div>
+      <div class="text-sm text-white/50">还没有写过信</div>
+      <button onclick="setTab('write')" class="mt-3 text-xs text-purple-400 hover:text-purple-300">写第一封信 →</button>
+    </div>`}
+
+    <!-- 打卡记录 -->
+    ${data.checkins.length > 0 ? `
+    <div class="bg-white/5 backdrop-blur rounded-2xl p-4 border border-white/10">
+      <div class="flex justify-between items-center mb-3">
+        <span class="text-sm font-medium text-white/70">近期打卡</span>
+        <span class="text-xs text-white/40">共 ${data.checkins.length} 次</span>
+      </div>
+      <div class="flex gap-2 flex-wrap">
+        ${data.checkins.slice(-14).reverse().map(c => {
+          const ct = CHECKIN_TYPES.find(x=>x.id===c.type);
+          return `<div title="${ct?.label}" class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-sm">${ct?.emoji||'✓'}</div>`;
+        }).join('')}
+      </div>
+    </div>` : ''}
+  </div>`;
+}
+
+// ========== 写信页 ==========
+let writeState = { step: 1, type: '', title: '', content: '', deliverDate: '', toSelf: true, recipientUid: '' };
+
+function renderWrite() {
+  return `
+  <div class="fade-in">
+    <h2 class="text-xl font-bold mb-1 handwriting">写一封信 ✍️</h2>
+    <p class="text-white/50 text-sm mb-6">写给未来的自己，或者某个特别的人</p>
+
+    ${writeState.step === 1 ? renderWriteStep1() : ''}
+    ${writeState.step === 2 ? renderWriteStep2() : ''}
+    ${writeState.step === 3 ? renderWriteStep3() : ''}
+  </div>`;
+}
+
+function renderWriteStep1() {
+  return `
+  <div class="space-y-4 fade-in">
+    <div class="text-sm text-white/60 mb-2">第一步：选择信件类型</div>
+    ${LETTER_TYPES.map(lt => `
+    <button onclick="selectLetterType('${lt.id}')"
+      class="w-full p-4 rounded-2xl border text-left transition-all ${writeState.type===lt.id ? 'border-purple-400 bg-purple-500/20' : 'border-white/10 bg-white/5 hover:bg-white/10'}">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br ${lt.color} flex items-center justify-center text-xl">${lt.emoji}</div>
+        <div>
+          <div class="font-medium">${lt.label}</div>
+          <div class="text-xs text-white/50">${lt.desc}</div>
+        </div>
+        ${writeState.type===lt.id ? '<div class="ml-auto text-purple-400">✓</div>' : ''}
+      </div>
+    </button>`).join('')}
+    <button onclick="nextWriteStep()" ${!writeState.type?'disabled':''} class="w-full py-3 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 font-medium disabled:opacity-40 mt-2">
+      下一步 →
+    </button>
+  </div>`;
+}
+
+function renderWriteStep2() {
+  const lt = LETTER_TYPES.find(x=>x.id===writeState.type);
+  // 计算默认日期（一年后）
+  const defaultDate = new Date();
+  defaultDate.setFullYear(defaultDate.getFullYear() + 1);
+  const defaultDateStr = defaultDate.toISOString().split('T')[0];
+  const minDate = new Date();
+  minDate.setDate(minDate.getDate() + 1);
+
+  return `
+  <div class="fade-in space-y-4">
+    <div class="flex items-center gap-2 mb-2">
+      <button onclick="writeState.step=1;render()" class="text-white/40 hover:text-white">←</button>
+      <div class="text-sm text-white/60">第二步：写信</div>
+    </div>
+
+    <div class="bg-white/5 rounded-2xl p-4 border border-white/10">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-xl">${lt.emoji}</span>
+        <span class="text-sm font-medium">${lt.label}</span>
+      </div>
+
+      <input id="letter-title" type="text" placeholder="给这封信起个标题……" maxlength="30"
+        value="${writeState.title}"
+        oninput="writeState.title=this.value"
+        class="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-purple-400 placeholder-white/30 mb-3">
+
+      <textarea id="letter-content" placeholder="亲爱的未来的我……\n\n此刻，我想对你说……"
+        oninput="writeState.content=this.value"
+        class="paper w-full rounded-xl px-4 py-3 text-sm text-gray-800 outline-none resize-none placeholder-gray-400 min-h-48"
+        style="min-height:200px">${writeState.content}</textarea>
+    </div>
+
+    <!-- 收件人 -->
+    <div class="bg-white/5 rounded-2xl p-4 border border-white/10">
+      <div class="text-sm font-medium mb-3">📮 寄给谁？</div>
+      <div class="flex gap-2 mb-3">
+        <button onclick="writeState.toSelf=true;render()"
+          class="flex-1 py-2 rounded-xl text-sm transition-all ${writeState.toSelf?'bg-purple-500 text-white':'bg-white/10 text-white/60 hover:bg-white/20'}">
+          寄给自己
+        </button>
+        <button onclick="writeState.toSelf=false;render()"
+          class="flex-1 py-2 rounded-xl text-sm transition-all ${!writeState.toSelf?'bg-purple-500 text-white':'bg-white/10 text-white/60 hover:bg-white/20'}">
+          寄给他人
+        </button>
+      </div>
+      ${!writeState.toSelf ? `
+      <input id="recipient-uid" type="text" placeholder="对方的小红书 UID"
+        value="${writeState.recipientUid}"
+        oninput="writeState.recipientUid=this.value"
+        class="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-purple-400 placeholder-white/30">
+      <p class="text-xs text-white/30 mt-1">* UID 可在对方主页「···」中查看</p>` : ''}
+    </div>
+
+    <!-- 投递时间 -->
+    <div class="bg-white/5 rounded-2xl p-4 border border-white/10">
+      <div class="text-sm font-medium mb-3">⏰ 什么时候投递？</div>
+      <div class="grid grid-cols-3 gap-2 mb-3">
+        ${[
+          {label:'三个月后', months:3},
+          {label:'半年后', months:6},
+          {label:'一年后', months:12},
+          {label:'两年后', months:24},
+          {label:'三年后', months:36},
+          {label:'自定义', months:0},
+        ].map(opt => {
+          const d = new Date();
+          if (opt.months > 0) d.setMonth(d.getMonth() + opt.months);
+          const dateStr = opt.months > 0 ? d.toISOString().split('T')[0] : '';
+          return `
+          <button onclick="setDeliverDate('${dateStr}')"
+            class="py-2 rounded-xl text-xs transition-all ${writeState.deliverDate===dateStr&&dateStr?'bg-purple-500 text-white':'bg-white/10 text-white/60 hover:bg-white/20'}">
+            ${opt.label}
+          </button>`;
+        }).join('')}
+      </div>
+      <input type="date" id="deliver-date" value="${writeState.deliverDate||defaultDateStr}"
+        min="${minDate.toISOString().split('T')[0]}"
+        onchange="writeState.deliverDate=this.value"
+        class="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-purple-400 text-white/80">
+    </div>
+
+    <button onclick="previewLetter()"
+      ${!writeState.content.trim()?'disabled':''}
+      class="w-full py-3 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 font-medium disabled:opacity-40">
+      预览并封存 →
+    </button>
+  </div>`;
+}
+
+function renderWriteStep3() {
+  const lt = LETTER_TYPES.find(x=>x.id===writeState.type);
+  const deliverDate = new Date(writeState.deliverDate || new Date(Date.now() + 365*86400000).toISOString().split('T')[0]);
+
+  return `
+  <div class="fade-in space-y-4">
+    <div class="flex items-center gap-2 mb-2">
+      <button onclick="writeState.step=2;render()" class="text-white/40 hover:text-white">←</button>
+      <div class="text-sm text-white/60">第三步：封存信件</div>
+    </div>
+
+    <div class="bg-gradient-to-br from-purple-900/80 to-indigo-900/80 rounded-3xl p-6 border border-purple-400/30 text-center">
+      <div class="text-5xl mb-3">${lt.emoji}</div>
+      <div class="handwriting text-xl mb-1">${writeState.title || '一封信'}</div>
+      <div class="text-sm text-white/50 mb-4">${lt.label}</div>
+
+      <div class="paper rounded-2xl p-4 text-left text-gray-800 text-sm leading-7 max-h-40 overflow-y-auto mb-4">
+        ${writeState.content.replace(/\n/g,'<br>')}
+      </div>
+
+      <div class="flex items-center justify-center gap-2 text-sm text-purple-300">
+        <span>📮</span>
+        <span>将于 <strong>${deliverDate.getFullYear()}年${deliverDate.getMonth()+1}月${deliverDate.getDate()}日</strong> 投递</span>
+      </div>
+      ${!writeState.toSelf && writeState.recipientUid ? `
+      <div class="text-xs text-white/40 mt-1">寄给 UID: ${writeState.recipientUid}</div>` : ''}
+    </div>
+
+    <div class="bg-amber-500/20 border border-amber-400/30 rounded-2xl p-4 text-sm text-amber-200">
+      💌 封存后这封信就会藏进你的信箱，在约定的日期才会出现。你准备好了吗？
+    </div>
+
+    <button onclick="sealLetter()"
+      class="w-full py-4 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 font-medium text-lg">
+      封存这封信 🔒
+    </button>
+  </div>`;
+}
+
+// ========== 信箱页 ==========
+function renderMailbox() {
+  const arrived = data.letters.filter(l => l.deliverAt <= Date.now() && !l.opened && !l.archived);
+  const opened = data.letters.filter(l => l.opened);
+  const pending = data.letters.filter(l => l.deliverAt > Date.now() && !l.archived);
+
+  return `
+  <div class="fade-in">
+    <h2 class="text-xl font-bold mb-1 handwriting">时光信箱 📬</h2>
+    <p class="text-white/50 text-sm mb-6">从过去飞来的信，以及还在路上的信</p>
+
+    ${arrived.length > 0 ? `
+    <div class="mb-6">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-rose-400 text-sm font-medium">📬 刚刚到达 (${arrived.length})</span>
+        <div class="flex-1 h-px bg-rose-400/20"></div>
+      </div>
+      <div class="space-y-3">
+        ${arrived.map(l => renderLetterCard(l, true)).join('')}
+      </div>
+    </div>` : ''}
+
+    ${pending.length > 0 ? `
+    <div class="mb-6">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-white/40 text-sm">⏳ 还在路上 (${pending.length})</span>
+        <div class="flex-1 h-px bg-white/10"></div>
+      </div>
+      <div class="space-y-3">
+        ${pending.map(l => renderLetterCard(l, false)).join('')}
+      </div>
+    </div>` : ''}
+
+    ${opened.length > 0 ? `
+    <div>
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-white/40 text-sm">✉️ 已读 (${opened.length})</span>
+        <div class="flex-1 h-px bg-white/10"></div>
+      </div>
+      <div class="space-y-3">
+        ${opened.map(l => renderLetterCard(l, false, true)).join('')}
+      </div>
+    </div>` : ''}
+
+    ${data.letters.length === 0 ? `
+    <div class="text-center py-16">
+      <div class="text-5xl mb-4">📭</div>
+      <div class="text-white/40">信箱空空如也</div>
+      <button onclick="setTab('write')" class="mt-4 text-sm text-purple-400 hover:text-purple-300">写第一封信 →</button>
+    </div>` : ''}
+  </div>`;
+}
+
+function renderLetterCard(l, isArrived, isOpened=false) {
+  const lt = LETTER_TYPES.find(x=>x.id===l.type) || LETTER_TYPES[4];
+  const days = daysUntil(l.deliverAt);
+  return `
+  <div class="envelope bg-white/5 border ${isArrived?'border-rose-400/40':'border-white/10'} rounded-2xl p-4"
+    onclick="openLetter('${l.id}')">
+    <div class="flex items-start gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br ${lt.color} flex items-center justify-center text-xl flex-shrink-0">${lt.emoji}</div>
+      <div class="flex-1 min-w-0">
+        <div class="font-medium truncate">${l.title || '无标题'}</div>
+        <div class="text-xs text-white/40 mt-0.5">
+          ${isArrived ? `<span class="text-rose-300">已到达 · ${formatDate(l.deliverAt)}</span>` :
+            isOpened ? `已读 · ${formatDate(l.deliverAt)}` :
+            `${days} 天后到达 · ${formatDate(l.deliverAt)}`}
+        </div>
+        ${!isOpened && !isArrived ? `
+        <div class="mt-2 h-1 bg-white/10 rounded-full overflow-hidden">
+          <div class="h-full bg-purple-500/60 rounded-full" style="width:${Math.max(5, 100 - days/3.65)}%"></div>
+        </div>` : ''}
+      </div>
+      ${isArrived ? '<div class="w-2 h-2 bg-rose-400 rounded-full flex-shrink-0 mt-1"></div>' : ''}
+    </div>
+  </div>`;
+}
+
+// ========== 薯园页 ==========
+function renderGarden() {
+  const stage = getStage(data.plant.totalPoints);
+  const stageInfo = PLANT_STAGES[stage];
+  const form = SWEET_POTATO_FORMS[data.plant.form];
+  const progress = getProgress(data.plant.totalPoints);
+  const canWater = !data.plant.lastWatered || !isToday(data.plant.lastWatered);
+
+  return `
+  <div class="fade-in">
+    <h2 class="text-xl font-bold mb-1 handwriting">我的薯园 🌱</h2>
+    <p class="text-white/50 text-sm mb-6">用自律浇灌你的红薯</p>
+
+    <!-- 当前红薯 -->
+    <div class="bg-gradient-to-br from-green-900/40 to-emerald-900/40 backdrop-blur rounded-3xl p-6 border border-emerald-400/20 text-center mb-4">
+      <div class="text-8xl mb-3 ${canWater ? 'animate-bounce' : ''}">${stage >= 5 ? form.emoji : stageInfo.emoji}</div>
+      <div class="handwriting text-xl mb-1">${stage >= 5 ? form.name : stageInfo.name}</div>
+      <div class="text-sm text-white/50 mb-4">${stage >= 5 ? form.desc : stageInfo.desc}</div>
+
+      <div class="bg-black/20 rounded-2xl p-4 mb-4">
+        <div class="flex justify-between text-xs text-white/50 mb-1">
+          <span>成长进度</span>
+          <span>${data.plant.totalPoints} 积分</span>
+        </div>
+        <div class="bg-white/10 rounded-full h-3 overflow-hidden">
+          <div class="progress-bar h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full" style="width:${progress}%"></div>
+        </div>
+        ${stage < PLANT_STAGES.length-1 ? `
+        <div class="text-xs text-white/30 mt-1 text-center">再积 ${PLANT_STAGES[stage+1].threshold - data.plant.totalPoints} 分 → ${PLANT_STAGES[stage+1].name}</div>` : ''}
+      </div>
+
+      <div class="flex gap-3">
+        <button onclick="waterPlant(event)" ${!canWater?'disabled':''}
+          class="flex-1 py-3 rounded-xl ${canWater?'bg-blue-500 hover:bg-blue-400':'bg-white/10 text-white/30'} text-sm font-medium transition-all">
+          💧 浇水 ${canWater ? '' : '(今日已浇)'}
+        </button>
+        <button onclick="fertilizePlant(event)"
+          class="flex-1 py-3 rounded-xl bg-amber-500/80 hover:bg-amber-400/80 text-sm font-medium transition-all">
+          🌿 施肥 (+5分)
+        </button>
+      </div>
+    </div>
+
+    <!-- 图鉴 -->
+    <div class="bg-white/5 rounded-2xl p-4 border border-white/10">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-sm font-medium">红薯图鉴</span>
+        <span class="text-xs text-white/40">${data.unlockedForms.length}/10 已解锁</span>
+      </div>
+      <div class="grid grid-cols-5 gap-2">
+        ${SWEET_POTATO_FORMS.map(f => {
+          const unlocked = data.unlockedForms.includes(f.id);
+          const isCurrent = data.plant.form === f.id && stage >= 5;
+          return `
+          <div title="${unlocked ? f.name + ' - ' + f.desc : '???'}"
+            class="aspect-square rounded-xl flex items-center justify-center text-2xl transition-all cursor-pointer
+              ${unlocked ? (isCurrent ? 'bg-purple-500/40 border-2 border-purple-400' : 'bg-white/10 hover:bg-white/20') : 'bg-white/5 opacity-30 grayscale'}">
+            ${unlocked ? f.emoji : '❓'}
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="mt-3 space-y-1">
+        ${SWEET_POTATO_FORMS.filter(f=>data.unlockedForms.includes(f.id)).map(f=>`
+        <div class="flex items-center gap-2 text-xs">
+          <span>${f.emoji}</span>
+          <span class="text-white/60">${f.name}</span>
+          <span class="text-white/30 ml-auto">${f.rarity}</span>
+        </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- 成长日志 -->
+    ${data.checkins.length > 0 ? `
+    <div class="bg-white/5 rounded-2xl p-4 border border-white/10 mt-4">
+      <div class="text-sm font-medium mb-3">🌱 成长日志</div>
+      <div class="space-y-2 max-h-48 overflow-y-auto">
+        ${data.checkins.slice().reverse().map(c=>{
+          const ct = CHECKIN_TYPES.find(x=>x.id===c.type);
+          return `
+          <div class="flex items-center gap-2 text-xs text-white/60">
+            <span>${ct?.emoji||'✓'}</span>
+            <span>${ct?.label||'打卡'}</span>
+            <span class="text-white/30">· ${c.item}</span>
+            <span class="ml-auto text-green-400">+${c.points}分</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>` : ''}
+  </div>`;
+}
+
+// ========== 打卡页 ==========
+function renderCheckin() {
+  const todayCheckins = data.checkins.filter(c => isToday(c.timestamp));
+
+  return `
+  <div class="fade-in">
+    <h2 class="text-xl font-bold mb-1 handwriting">今日打卡 ⏰</h2>
+    <p class="text-white/50 text-sm mb-2">自律是给红薯最好的肥料</p>
+    <div class="text-xs text-white/30 mb-6">今日已打卡 ${todayCheckins.length} 次 · 共获得 ${todayCheckins.reduce((a,c)=>a+c.points,0)} 积分</div>
+
+    <div class="space-y-3">
+      ${CHECKIN_TYPES.map(ct => {
+        const todayCount = todayCheckins.filter(c=>c.type===ct.id).length;
+        return `
+        <div class="bg-white/5 border border-white/10 rounded-2xl p-4">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="text-2xl">${ct.emoji}</div>
+            <div class="flex-1">
+              <div class="font-medium text-sm">${ct.label}</div>
+              <div class="text-xs text-white/40">${ct.desc} · +${ct.points}分</div>
+            </div>
+            ${todayCount > 0 ? `<span class="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full">今日×${todayCount}</span>` : ''}
+          </div>
+          <div class="flex flex-wrap gap-2">
+            ${ct.items.map(item => `
+            <button onclick="doCheckin('${ct.id}','${item}',${ct.points},event)"
+              class="text-xs bg-white/10 hover:bg-purple-500/30 border border-white/10 hover:border-purple-400/40 rounded-full px-3 py-1.5 transition-all">
+              ${item}
+            </button>`).join('')}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div class="bg-white/5 rounded-2xl p-4 border border-white/10 mt-4 text-center">
+      <div class="text-3xl mb-2">🌱</div>
+      <div class="text-sm text-white/60">每一次打卡，都是给红薯的一次浇水</div>
+      <div class="text-xs text-white/30 mt-1">积累 ${PLANT_STAGES[Math.min(getStage(data.plant.totalPoints)+1, PLANT_STAGES.length-1)].threshold - data.plant.totalPoints} 分后，红薯将进入下一阶段</div>
+    </div>
+  </div>`;
+}
+
+// ========== 操作函数 ==========
+window.selectAvatar = (e) => { data.user.avatar = e; saveData(); renderSetup(); };
+window.finishSetup = () => {
+  const name = document.getElementById('setup-name')?.value?.trim();
+  if (!name) { showToast('起个名字吧～', 'error'); return; }
+  data.user.name = name;
+  data.setupDone = true;
+  // 解锁初始形态
+  data.plant.form = Math.floor(Math.random() * 10);
+  data.unlockedForms = [data.plant.form];
+  saveData();
+  showToast('🌰 你的红薯种子种下了！');
+  render();
+};
+
+window.setTab = (tab) => { data.tab = tab; saveData(); render(); };
+
+window.selectLetterType = (id) => { writeState.type = id; render(); };
+window.nextWriteStep = () => { if (writeState.type) { writeState.step = 2; render(); } };
+window.setDeliverDate = (date) => { writeState.deliverDate = date; render(); };
+window.previewLetter = () => {
+  const content = document.getElementById('letter-content')?.value?.trim();
+  const title = document.getElementById('letter-title')?.value?.trim();
+  const date = document.getElementById('deliver-date')?.value;
+  const uid = document.getElementById('recipient-uid')?.value?.trim();
+  writeState.content = content || writeState.content;
+  writeState.title = title || writeState.title;
+  writeState.deliverDate = date || writeState.deliverDate;
+  writeState.recipientUid = uid || writeState.recipientUid;
+  if (!writeState.content) { showToast('写点什么吧～', 'error'); return; }
+  writeState.step = 3;
+  render();
+};
+window.sealLetter = () => {
+  const deliverDate = writeState.deliverDate || new Date(Date.now() + 365*86400000).toISOString().split('T')[0];
+  const letter = {
+    id: 'l-' + Date.now(),
+    type: writeState.type || 'letter',
+    title: writeState.title || '一封信',
+    content: writeState.content,
+    deliverAt: new Date(deliverDate).getTime(),
+    createdAt: Date.now(),
+    toSelf: writeState.toSelf,
+    recipientUid: writeState.recipientUid,
+    opened: false,
+    archived: false,
+  };
+  data.letters.push(letter);
+  // 写信奖励
+  data.plant.totalPoints += 5;
+  data.plant.stage = getStage(data.plant.totalPoints);
+  checkUnlock();
+  saveData();
+  writeState = { step: 1, type: '', title: '', content: '', deliverDate: '', toSelf: true, recipientUid: '' };
+  showToast('✉️ 信已封存，在约定的日期你会看到它');
+  data.tab = 'mailbox';
+  render();
+};
+
+window.openLetter = (id) => {
+  const letter = data.letters.find(l => l.id === id);
+  if (!letter) return;
+  const lt = LETTER_TYPES.find(x=>x.id===letter.type) || LETTER_TYPES[4];
+  const isArrived = letter.deliverAt <= Date.now();
+  const prompt = getRandomPrompt(letter.type);
+
+  document.getElementById('modals').innerHTML = `
+  <div class="modal-overlay" onclick="closeModal(event)">
+    <div class="w-full max-w-sm bg-gradient-to-b from-purple-950 to-indigo-950 rounded-3xl border border-purple-400/30 overflow-hidden" onclick="event.stopPropagation()">
+      <div class="bg-gradient-to-br ${lt.color} p-6 text-center">
+        <div class="text-5xl mb-2">${lt.emoji}</div>
+        <div class="handwriting text-xl">${letter.title}</div>
+        ${isArrived ? `<div class="text-white/80 text-sm mt-1">${prompt}</div>` : ''}
+      </div>
+      <div class="p-5">
+        ${isArrived ? `
+        <div class="paper rounded-2xl p-4 text-gray-800 text-sm leading-7 max-h-64 overflow-y-auto mb-4">
+          ${letter.content.replace(/\n/g,'<br>')}
+        </div>
+        <div class="text-xs text-white/40 text-center mb-4">
+          写于 ${formatDate(letter.createdAt)} · 投递于 ${formatDate(letter.deliverAt)}
+          ${!letter.toSelf && letter.recipientUid ? ` · 写给 UID:${letter.recipientUid}` : ''}
+        </div>` : `
+        <div class="text-center py-6">
+          <div class="text-4xl mb-3">🔒</div>
+          <div class="text-white/60 text-sm">这封信还在路上</div>
+          <div class="text-white/40 text-xs mt-1">${daysUntil(letter.deliverAt)} 天后，它会出现在你面前</div>
+        </div>`}
+        <button onclick="closeModal()" class="w-full py-3 rounded-2xl bg-white/10 text-white/60 text-sm hover:bg-white/20">关闭</button>
+        ${isArrived && !letter.opened ? `
+        <button onclick="markOpened('${letter.id}')" class="w-full mt-2 py-3 rounded-2xl bg-purple-500 text-white text-sm font-medium">
+          已读，封存这段记忆 ✓
+        </button>` : ''}
+      </div>
+    </div>
+  </div>`;
+
+  if (isArrived && !letter.opened) {
+    // 积分奖励
+    data.plant.totalPoints += 3;
+    checkUnlock();
+    saveData();
+  }
+};
+
+window.markOpened = (id) => {
+  const letter = data.letters.find(l => l.id === id);
+  if (letter) { letter.opened = true; saveData(); }
+  closeModal();
+  render();
+};
+
+window.closeModal = (e) => {
+  if (!e || e.target === e.currentTarget || e.type === 'click') {
+    document.getElementById('modals').innerHTML = '';
+    render();
+  }
+};
+
+window.waterPlant = (e) => {
+  if (data.plant.lastWatered && isToday(data.plant.lastWatered)) {
+    showToast('今天已经浇过水了，明天再来～', 'error');
+    return;
+  }
+  data.plant.lastWatered = Date.now();
+  data.plant.totalPoints += 3;
+  data.plant.stage = getStage(data.plant.totalPoints);
+  checkUnlock();
+  saveData();
+  spawnParticles('💧', e.clientX, e.clientY);
+  showToast('💧 浇水成功！+3分');
+  render();
+};
+
+window.fertilizePlant = (e) => {
+  data.plant.totalPoints += 5;
+  data.plant.stage = getStage(data.plant.totalPoints);
+  checkUnlock();
+  saveData();
+  spawnParticles('🌿', e.clientX, e.clientY);
+  showToast('🌿 施肥成功！+5分');
+  render();
+};
+
+window.doCheckin = (type, item, points, e) => {
+  const checkin = { id:'c-'+Date.now(), type, item, points, timestamp: Date.now() };
+  data.checkins.push(checkin);
+  data.plant.totalPoints += points;
+  data.plant.stage = getStage(data.plant.totalPoints);
+  checkUnlock();
+  saveData();
+  spawnParticles('⭐', e.clientX, e.clientY, 4);
+  showToast(`${CHECKIN_TYPES.find(x=>x.id===type)?.emoji} ${item} · +${points}分！`);
+  render();
+};
+
+function checkUnlock() {
+  // 根据积分解锁新形态
+  const thresholds = [0,20,50,80,120,160,200,250,300,400];
+  thresholds.forEach((t,i) => {
+    if (data.plant.totalPoints >= t && !data.unlockedForms.includes(i)) {
+      data.unlockedForms.push(i);
+      setTimeout(() => showToast(`🎉 解锁新形态：${SWEET_POTATO_FORMS[i].name} ${SWEET_POTATO_FORMS[i].emoji}`), 500);
+    }
+  });
+  // 成熟后随机显示解锁的形态之一
+  if (getStage(data.plant.totalPoints) >= 5 && data.plant.form === 0) {
+    const available = data.unlockedForms;
+    data.plant.form = available[Math.floor(Math.random() * available.length)];
+  }
+}
+
+// ========== 初始化 ==========
+generateStars();
+render();
+</script>
+</body>
+</html>
