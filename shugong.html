@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>薯宫 🍠 — 你的时光树洞</title>
+<title>薯洞 🍠 — 你的时光树洞</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
 <style>
@@ -345,7 +345,7 @@ const DAILY_QUOTES = [
   { text: '你不是一个人在战斗，但你必须先站起来。', author: '网络' },
   { text: '做一个有趣的人，比做一个正确的人更难。', author: '网络' },
   { text: '我们都是第一次活，不必太慌张。', author: '网络' },
-  { text: '写信给未来的你——因为那个人值得被珍视。', author: '薯宫' },
+  { text: '写信给未来的你——因为那个人值得被珍视。', author: '薯洞' },
   { text: '种一棵树最好的时间是十年前，其次是现在。', author: '中国谚语' },
   { text: '你走，我不送你。你来，无论多大风雨，我要去接你。', author: '汪曾祺' },
   { text: '一个人至少拥有一个梦想，有一个理由去坚强。', author: '三毛' },
@@ -399,7 +399,7 @@ function renderSetup() {
     <div class="w-full max-w-sm fade-in">
       <div class="text-center mb-8">
         <div class="text-7xl mb-4 animate-bounce">🍠</div>
-        <h1 class="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">薯宫</h1>
+        <h1 class="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">薯洞</h1>
         <p class="text-purple-300 mt-2 text-sm">你的私密时光树洞</p>
       </div>
       <div class="bg-white/10 backdrop-blur rounded-3xl p-6 border border-white/20">
@@ -487,7 +487,7 @@ function renderHome() {
           <div class="text-3xl">${data.user.avatar}</div>
           <div>
             <div class="font-medium">${data.user.name || '薯友'}</div>
-            <div class="text-xs text-white/50">在薯宫种下了 ${totalLetters} 封信</div>
+            <div class="text-xs text-white/50">在薯洞种下了 ${totalLetters} 封信</div>
           </div>
         </div>
         <div class="text-right">
@@ -932,11 +932,15 @@ function renderGarden() {
         ${data.checkins.slice().reverse().map(c=>{
           const ct = CHECKIN_TYPES.find(x=>x.id===c.type);
           return `
-          <div class="flex items-center gap-2 text-xs text-white/60">
-            <span>${ct?.emoji||'✓'}</span>
-            <span>${ct?.label||'打卡'}</span>
-            <span class="text-white/30">· ${c.item}</span>
-            <span class="ml-auto text-green-400">+${c.points}分</span>
+          <div class="text-xs text-white/60">
+            <div class="flex items-center gap-2">
+              <span>${ct?.emoji||'✓'}</span>
+              <span>${ct?.label||'打卡'}</span>
+              <span class="text-white/30">· ${c.item}</span>
+              <span class="ml-auto text-green-400">+${c.points}分</span>
+              ${c.img ? '<span class="text-white/30">📷</span>' : ''}
+            </div>
+            ${c.img ? `<img src="${c.img}" class="mt-1 ml-6 w-20 h-16 object-cover rounded-lg opacity-70" />` : ''}
           </div>`;
         }).join('')}
       </div>
@@ -1153,30 +1157,101 @@ window.fertilizePlant = (e) => {
   render();
 };
 
+// 待上传图片暂存
+let _pendingCheckin = null;
+
 window.doCheckin = (type, item, points, e) => {
   const rule = CHECKIN_DAILY_RULES[type];
   const todayCount = getTodayCheckinCount(type);
 
-  // 检查每日上限
   if (rule && todayCount >= rule.dailyLimit) {
     showToast(`「${CHECKIN_TYPES.find(x=>x.id===type)?.label}」今日已达上限（${rule.dailyLimit}次）`, 'error');
     return;
   }
 
-  const checkin = { id:'c-'+Date.now(), type, item, points, timestamp: Date.now() };
+  // 弹出图片上传确认框
+  _pendingCheckin = { type, item, points };
+  const ct = CHECKIN_TYPES.find(x=>x.id===type);
+  document.getElementById('modals').innerHTML = `
+  <div class="modal-overlay" onclick="cancelCheckin(event)">
+    <div class="w-full max-w-sm bg-gradient-to-b from-purple-950 to-indigo-950 rounded-3xl border border-purple-400/30 p-6" onclick="event.stopPropagation()">
+      <div class="text-center mb-5">
+        <div class="text-4xl mb-2">${ct.emoji}</div>
+        <div class="font-medium">${item}</div>
+        <div class="text-xs text-white/40 mt-1">${ct.label} · +${points}分</div>
+      </div>
+
+      <div class="mb-5">
+        <div class="text-sm text-white/60 mb-3">上传打卡凭证（可选）</div>
+        <label for="checkin-img" class="block cursor-pointer">
+          <div id="img-preview-area" class="border-2 border-dashed border-white/20 rounded-2xl p-6 text-center hover:border-purple-400/60 transition-all">
+            <div class="text-3xl mb-2">📷</div>
+            <div class="text-sm text-white/40">点击上传图片</div>
+            <div class="text-xs text-white/20 mt-1">支持 jpg / png，仅存本地</div>
+          </div>
+        </label>
+        <input type="file" id="checkin-img" accept="image/*" class="hidden" onchange="previewCheckinImg(this)">
+      </div>
+
+      <div class="flex gap-3">
+        <button onclick="cancelCheckin()" class="flex-1 py-3 rounded-2xl bg-white/10 text-white/60 text-sm">取消</button>
+        <button onclick="confirmCheckin()" class="flex-1 py-3 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 font-medium text-sm">打卡！⭐</button>
+      </div>
+    </div>
+  </div>`;
+};
+
+window.previewCheckinImg = (input) => {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 3 * 1024 * 1024) {
+    showToast('图片太大了，请选择 3MB 以内的图片', 'error');
+    input.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    _pendingCheckin.imgBase64 = e.target.result;
+    document.getElementById('img-preview-area').innerHTML = `
+      <img src="${e.target.result}" class="w-full max-h-40 object-cover rounded-xl" />
+      <div class="text-xs text-white/40 mt-2">已选择，点击更换</div>`;
+  };
+  reader.readAsDataURL(file);
+};
+
+window.confirmCheckin = () => {
+  if (!_pendingCheckin) return;
+  const { type, item, points, imgBase64 } = _pendingCheckin;
+  const rule = CHECKIN_DAILY_RULES[type];
+
+  const checkin = {
+    id: 'c-' + Date.now(),
+    type, item, points,
+    timestamp: Date.now(),
+    img: imgBase64 || null,
+  };
   data.checkins.push(checkin);
   data.plant.totalPoints += points;
   data.plant.stage = getStage(data.plant.totalPoints);
 
-  // 施肥机会：每次打卡直接获得
   const fertGained = rule ? rule.fertPerCheckin : 1;
   data.plant.fertilizerCharges = (data.plant.fertilizerCharges || 0) + fertGained;
 
   checkUnlock();
   saveData();
-  spawnParticles('⭐', e.clientX, e.clientY, 4);
-  showToast(`${CHECKIN_TYPES.find(x=>x.id===type)?.emoji} ${item} · +${points}分 · 🌿+${fertGained}次施肥机会！`);
+  _pendingCheckin = null;
+  document.getElementById('modals').innerHTML = '';
+
+  // 粒子特效
+  spawnParticles('⭐', window.innerWidth/2, window.innerHeight/2, 6);
+  showToast(`${CHECKIN_TYPES.find(x=>x.id===type)?.emoji} ${item} · +${points}分 · 🌿+${fertGained}次施肥！${imgBase64 ? ' 📷已存图' : ''}`);
   render();
+};
+
+window.cancelCheckin = (e) => {
+  if (e && e.target !== e.currentTarget) return;
+  _pendingCheckin = null;
+  document.getElementById('modals').innerHTML = '';
 };
 
 window.applyFestivalHint = (dateStr, to) => {
