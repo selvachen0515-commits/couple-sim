@@ -62,6 +62,14 @@ npm run dev
 
 ## 部署到 Vercel
 
+### 方式零：一键部署 (推荐)
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2F%3Cyour-username%3E%2Fcouple-sim&env=OPENAI_API_KEY&envDescription=OpenAI%20API%20Key&envLink=https%3A%2F%2Fplatform.openai.com%2Fapi-keys&project-name=couple-sim&repository-name=couple-sim)
+
+1. 先把代码推送到你自己的 GitHub 仓库
+2. 修改上方按钮链接里的 `<your-username>` 为你的 GitHub 用户名
+3. 点击按钮，按提示配置环境变量即可
+
 ### 方式一：Vercel CLI
 
 ```bash
