@@ -83,19 +83,64 @@ function getDefaultData() {
     user: { name: '', avatar: '🍠', joined: Date.now() },
     letters: [],
     plant: {
-      stage: 0, // 0=种子 1=发芽 2=幼苗 3=生长 4=开花 5=成熟
-      form: Math.floor(Math.random() * 10), // 红薯形态 0-9
+      stage: 0,
+      form: Math.floor(Math.random() * 10),
       water: 0,
       fertilizer: 0,
+      fertilizerCharges: 0, // 可用施肥次数，由打卡解锁
       totalPoints: 0,
       lastWatered: null,
       name: '',
     },
-    checkins: [], // {date, type, duration, points}
+    checkins: [],
     unlockedForms: [0],
     tab: 'home',
     setupDone: false,
   };
+}
+
+// ========== 施肥规则 ==========
+// 每种类型打卡累计次数达到阈值，奖励施肥机会
+const FERTILIZER_RULES = [
+  { type: 'exercise',      threshold: 3,  reward: 1, desc: '运动打卡满3次' },
+  { type: 'exercise',      threshold: 7,  reward: 1, desc: '运动打卡满7次' },
+  { type: 'study',         threshold: 3,  reward: 1, desc: '学习打卡满3次' },
+  { type: 'study',         threshold: 7,  reward: 1, desc: '学习打卡满7次' },
+  { type: 'family',        threshold: 2,  reward: 1, desc: '陪伴家人满2次' },
+  { type: 'digital_detox', threshold: 3,  reward: 2, desc: '防沉迷打卡满3次（双倍奖励！）' },
+  { type: 'sleep',         threshold: 5,  reward: 1, desc: '规律作息满5次' },
+  { type: 'creative',      threshold: 3,  reward: 1, desc: '创意输出满3次' },
+  // 混合奖励：任意累计打卡次数
+  { type: 'any',           threshold: 10, reward: 1, desc: '任意打卡累计满10次' },
+  { type: 'any',           threshold: 30, reward: 2, desc: '任意打卡累计满30次' },
+  { type: 'any',           threshold: 60, reward: 3, desc: '任意打卡累计满60次' },
+];
+
+function calcFertilizerCharges() {
+  // 重新计算应得的施肥次数（累计）
+  let total = 0;
+  FERTILIZER_RULES.forEach(rule => {
+    if (rule.type === 'any') {
+      const count = data.checkins.length;
+      if (count >= rule.threshold) total += rule.reward;
+    } else {
+      const count = data.checkins.filter(c => c.type === rule.type).length;
+      if (count >= rule.threshold) total += rule.reward;
+    }
+  });
+  return total;
+}
+
+function getNextFertilizerHint() {
+  // 找到最近快达成的目标
+  for (const rule of FERTILIZER_RULES) {
+    let count = rule.type === 'any' ? data.checkins.length : data.checkins.filter(c=>c.type===rule.type).length;
+    if (count < rule.threshold) {
+      const remaining = rule.threshold - count;
+      return `再${rule.type==='any'?'打卡':'做「'+CHECKIN_TYPES.find(x=>x.id===rule.type)?.label+'」'}${remaining}次，可获得${rule.reward}次施肥机会`;
+    }
+  }
+  return '所有施肥奖励已解锁！';
 }
 function saveData() { localStorage.setItem('shugong_data', JSON.stringify(data)); }
 
@@ -234,6 +279,51 @@ function spawnParticles(emoji, x, y, count=6) {
     document.body.appendChild(el);
     setTimeout(()=>el.remove(), 2000);
   }
+}
+
+// ========== 节日提示 ==========
+function getUpcomingFestivals() {
+  const now = new Date();
+  const year = now.getFullYear();
+  // 固定节日（月份0-indexed）
+  const fixed = [
+    { name: "元旦",       emoji: "🎆", month: 0,  day: 1  },
+    { name: "情人节",     emoji: "💝", month: 1,  day: 14 },
+    { name: "妇女节",     emoji: "🌹", month: 2,  day: 8  },
+    { name: "儿童节",     emoji: "🎠", month: 5,  day: 1  },
+    { name: "七夕",       emoji: "🌌", month: 7,  day: 10 }, // 近似农历七月初七
+    { name: "中秋节",     emoji: "🥮", month: 8,  day: 17 }, // 近似
+    { name: "国庆节",     emoji: "🇨🇳", month: 9, day: 1  },
+    { name: "圣诞节",     emoji: "🎄", month: 11, day: 25 },
+    { name: "母亲节",     emoji: "🌸", month: 4,  day: 11 }, // 5月第二个周日近似
+    { name: "父亲节",     emoji: "👨", month: 5,  day: 15 }, // 6月第三个周日近似
+    { name: "感恩节",     emoji: "🍂", month: 10, day: 28 },
+    { name: "万圣节",     emoji: "🎃", month: 9,  day: 31 },
+  ];
+  const SUGGESTIONS = {
+    "元旦":     { to: '自己', hint: '新的一年开始了，给一年后的自己留下此刻的心愿吧' },
+    "情人节":   { to: '另一半', hint: '把此刻的心意，封存给未来的 Ta' },
+    "妇女节":   { to: '妈妈', hint: '给妈妈写一封她在特别日子才能看到的信' },
+    "儿童节":   { to: '自己', hint: '给内心那个小孩写封信，问问 ta 还好吗' },
+    "七夕":     { to: '另一半', hint: '七夕前后，把最想说的话悄悄藏起来' },
+    "中秋节":   { to: '家人', hint: '月圆之夜，给远方的家人写封信吧' },
+    "国庆节":   { to: '自己', hint: '假期里，给未来的自己留下此刻的状态' },
+    "圣诞节":   { to: '朋友', hint: '平安夜，给一个特别的人送去跨越时间的祝福' },
+    "母亲节":   { to: '妈妈', hint: '写下你想对妈妈说的话，让她在未来某天收到' },
+    "父亲节":   { to: '爸爸', hint: '给爸爸写一封他在未来才能看到的信' },
+    "感恩节":   { to: '自己', hint: '感恩节，写下此刻你感激的一切' },
+    "万圣节":   { to: '自己', hint: '在这个神秘的夜晚，留下一个只有你知道的秘密' },
+  };
+  const results = [];
+  fixed.forEach(f => {
+    let d = new Date(year, f.month, f.day);
+    if (d < now) d = new Date(year + 1, f.month, f.day);
+    const days = Math.ceil((d - now) / 86400000);
+    if (days <= 30) {
+      results.push({ ...f, days, date: d, suggestion: SUGGESTIONS[f.name] });
+    }
+  });
+  return results.sort((a, b) => a.days - b.days).slice(0, 2);
 }
 
 // ========== 检查到期信件 ==========
@@ -411,11 +501,13 @@ function renderHome() {
       ${data.letters.slice(-3).reverse().map(l => {
         const lt = LETTER_TYPES.find(x=>x.id===l.type) || LETTER_TYPES[4];
         const isArrived = l.deliverAt <= Date.now() && !l.opened;
+        const MYSTERY_TITLES = ['神秘来信', '过去的信', '封存的秘密', '时光胶囊', '来自从前的你'];
+        const displayTitle = isArrived ? (l.title || '无标题') : MYSTERY_TITLES[Math.abs(l.id.charCodeAt(2) || 0) % MYSTERY_TITLES.length];
         return `
         <div class="flex items-center gap-3 py-2 border-b border-white/5 last:border-0">
-          <span class="text-xl">${lt.emoji}</span>
+          <span class="text-xl">${isArrived ? lt.emoji : '🔒'}</span>
           <div class="flex-1 min-w-0">
-            <div class="text-sm truncate">${l.title || '无标题'}</div>
+            <div class="text-sm truncate ${isArrived ? '' : 'text-white/40 italic'}">${displayTitle}</div>
             <div class="text-xs text-white/40">${isArrived ? '📬 已到达' : `⏳ ${daysUntil(l.deliverAt)} 天后到达`}</div>
           </div>
           ${isArrived ? '<span class="w-2 h-2 bg-rose-400 rounded-full flex-shrink-0"></span>' : ''}
@@ -449,10 +541,29 @@ function renderHome() {
 let writeState = { step: 1, type: '', title: '', content: '', deliverDate: '', toSelf: true, recipientUid: '' };
 
 function renderWrite() {
+  const festivals = getUpcomingFestivals();
   return `
   <div class="fade-in">
     <h2 class="text-xl font-bold mb-1 handwriting">写一封信 ✍️</h2>
-    <p class="text-white/50 text-sm mb-6">写给未来的自己，或者某个特别的人</p>
+    <p class="text-white/50 text-sm mb-4">写给未来的自己，或者某个特别的人</p>
+
+    ${festivals.length > 0 && writeState.step === 1 ? `
+    <div class="space-y-2 mb-5">
+      ${festivals.map(f => `
+      <div class="bg-gradient-to-r from-purple-600/30 to-pink-600/30 border border-purple-400/20 rounded-2xl px-4 py-3 cursor-pointer hover:border-purple-400/50 transition-all"
+        onclick="applyFestivalHint('${f.date.toISOString().split('T')[0]}','${(f.suggestion?.to||'自己').replace(/'/g,'\\\'')}')"
+      >
+        <div class="flex items-center gap-2">
+          <span class="text-xl">${f.emoji}</span>
+          <div class="flex-1">
+            <span class="text-sm font-medium text-purple-200">${f.name}</span>
+            <span class="text-xs text-white/50 ml-2">还有 ${f.days} 天</span>
+            <div class="text-xs text-white/40 mt-0.5">${f.suggestion?.hint || '给重要的 Ta 寄一封信吧'}</div>
+          </div>
+          <span class="text-xs text-purple-400 flex-shrink-0">用这个 →</span>
+        </div>
+      </div>`).join('')}
+    </div>` : ''}
 
     ${writeState.step === 1 ? renderWriteStep1() : ''}
     ${writeState.step === 2 ? renderWriteStep2() : ''}
@@ -725,11 +836,12 @@ function renderGarden() {
           class="flex-1 py-3 rounded-xl ${canWater?'bg-blue-500 hover:bg-blue-400':'bg-white/10 text-white/30'} text-sm font-medium transition-all">
           💧 浇水 ${canWater ? '' : '(今日已浇)'}
         </button>
-        <button onclick="fertilizePlant(event)"
-          class="flex-1 py-3 rounded-xl bg-amber-500/80 hover:bg-amber-400/80 text-sm font-medium transition-all">
-          🌿 施肥 (+5分)
+        <button onclick="fertilizePlant(event)" ${data.plant.fertilizerCharges <= 0 ? 'disabled' : ''}
+          class="flex-1 py-3 rounded-xl ${data.plant.fertilizerCharges > 0 ? 'bg-amber-500/80 hover:bg-amber-400/80' : 'bg-white/10 text-white/30'} text-sm font-medium transition-all">
+          🌿 施肥 ×${data.plant.fertilizerCharges}
         </button>
       </div>
+      <div class="text-xs text-white/30 text-center mt-2">${getNextFertilizerHint()}</div>
     </div>
 
     <!-- 图鉴 -->
@@ -957,12 +1069,17 @@ window.waterPlant = (e) => {
 };
 
 window.fertilizePlant = (e) => {
+  if (data.plant.fertilizerCharges <= 0) {
+    showToast('没有施肥机会了，去打卡解锁吧！', 'error');
+    return;
+  }
+  data.plant.fertilizerCharges -= 1;
   data.plant.totalPoints += 5;
   data.plant.stage = getStage(data.plant.totalPoints);
   checkUnlock();
   saveData();
   spawnParticles('🌿', e.clientX, e.clientY);
-  showToast('🌿 施肥成功！+5分');
+  showToast(`🌿 施肥成功！+5分（剩余 ${data.plant.fertilizerCharges} 次）`);
   render();
 };
 
@@ -971,11 +1088,29 @@ window.doCheckin = (type, item, points, e) => {
   data.checkins.push(checkin);
   data.plant.totalPoints += points;
   data.plant.stage = getStage(data.plant.totalPoints);
+  // 重新计算施肥次数（已用过的不退还，只补充差值）
+  const earned = calcFertilizerCharges();
+  const used = (data.plant._fertilizerEarned || 0) - data.plant.fertilizerCharges;
+  const newCharges = Math.max(0, earned - Math.max(0, used));
+  if (newCharges > data.plant.fertilizerCharges) {
+    const gained = newCharges - data.plant.fertilizerCharges;
+    data.plant.fertilizerCharges = newCharges;
+    setTimeout(() => showToast(`🌿 解锁 ${gained} 次施肥机会！`), 600);
+  }
+  data.plant._fertilizerEarned = earned;
   checkUnlock();
   saveData();
   spawnParticles('⭐', e.clientX, e.clientY, 4);
   showToast(`${CHECKIN_TYPES.find(x=>x.id===type)?.emoji} ${item} · +${points}分！`);
   render();
+};
+
+window.applyFestivalHint = (dateStr, to) => {
+  writeState.deliverDate = dateStr;
+  writeState.toSelf = (to === '自己');
+  writeState.step = 1;
+  render();
+  setTimeout(() => showToast(`已设置投递到节日当天 🎉`), 100);
 };
 
 function checkUnlock() {
