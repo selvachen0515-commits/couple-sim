@@ -8,17 +8,10 @@
 /* === 莫兰迪波点背景配色 === */
 *{box-sizing:border-box;margin:0;padding:0;}
 body{
-  color:#3d3545;
+  color:#2a2030;
   font-family:'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
   min-height:100vh;
   background-color:#ede8e4;
-  /* 莫兰迪波点：低饱和粉紫+薄荷+藕色交织 */
-  background-image:
-    radial-gradient(circle, rgba(195,178,210,0.55) 1.5px, transparent 1.5px),
-    radial-gradient(circle, rgba(168,200,188,0.45) 1px, transparent 1px),
-    radial-gradient(circle, rgba(215,195,200,0.4) 1.2px, transparent 1.2px);
-  background-size: 28px 28px, 18px 18px, 38px 38px;
-  background-position: 0 0, 9px 9px, 5px 14px;
 }
 #app{position:relative;z-index:1;}
 input,textarea,button{font-family:inherit;}
@@ -27,8 +20,8 @@ input,textarea,button{font-family:inherit;}
 #app{max-width:480px;margin:0 auto;padding:16px 16px 80px;}
 nav{position:fixed;bottom:0;left:0;right:0;background:rgba(220,210,232,0.92);backdrop-filter:blur(12px);border-top:1px solid rgba(160,140,180,0.25);z-index:50;}
 .nav-inner{max-width:480px;margin:0 auto;display:flex;}
-.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 0;background:none;border:none;color:rgba(100,85,120,0.45);cursor:pointer;font-size:12px;gap:3px;transition:color 0.2s;}
-.nav-btn.active{color:#7a5e8a;}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 0;background:none;border:none;color:rgba(80,60,105,0.55);cursor:pointer;font-size:12px;gap:3px;transition:color 0.2s;font-weight:500;}
+.nav-btn.active{color:#6a4e7a;font-weight:700;}
 .nav-btn span:first-child{font-size:20px;}
 
 /* 卡片 */
@@ -36,7 +29,7 @@ nav{position:fixed;bottom:0;left:0;right:0;background:rgba(220,210,232,0.92);bac
 .card-hero{background:linear-gradient(135deg,rgba(200,180,220,0.4),rgba(175,210,200,0.4));border:1px solid rgba(180,165,200,0.3);border-radius:18px;padding:20px;text-align:center;}
 
 /* 输入 */
-input[type=text],input[type=date],textarea{width:100%;background:rgba(255,252,255,0.7);border:1px solid rgba(180,165,200,0.35);border-radius:14px;padding:12px 16px;color:#3d3545;font-size:14px;outline:none;transition:border-color 0.2s;}
+input[type=text],input[type=date],textarea{width:100%;background:rgba(255,252,255,0.7);border:1px solid rgba(180,165,200,0.35);border-radius:14px;padding:12px 16px;color:#2a2030;font-size:14px;outline:none;transition:border-color 0.2s;}
 input:focus,textarea:focus{border-color:rgba(140,105,165,0.5);}
 input::placeholder,textarea::placeholder{color:rgba(120,105,140,0.35);}
 textarea{resize:none;}
@@ -44,11 +37,11 @@ textarea{resize:none;}
 /* 按钮 */
 .btn-primary{width:100%;padding:14px;border-radius:14px;border:none;background:linear-gradient(135deg,#9b7eb8,#7db8a0);color:#fff;font-size:14px;font-weight:600;cursor:pointer;transition:opacity 0.2s;}
 .btn-primary:hover{opacity:0.88;}
-.btn-ghost{background:rgba(200,185,220,0.3);border:1px solid rgba(180,165,200,0.35);border-radius:14px;padding:10px 16px;color:rgba(100,80,120,0.75);font-size:13px;cursor:pointer;transition:background 0.2s;}
+.btn-ghost{background:rgba(200,185,220,0.3);border:1px solid rgba(180,165,200,0.35);border-radius:14px;padding:10px 16px;color:rgba(70,52,95,0.85);font-size:13px;cursor:pointer;transition:background 0.2s;}
 .btn-ghost:hover{background:rgba(200,185,220,0.5);}
-.btn-sm{padding:6px 14px;border-radius:20px;border:1px solid rgba(180,165,200,0.3);background:rgba(255,252,255,0.5);color:rgba(110,90,130,0.6);font-size:12px;cursor:pointer;transition:all 0.15s;}
-.btn-sm.active{background:rgba(155,126,184,0.2);border-color:rgba(155,126,184,0.5);color:#7a5e8a;}
-.btn-sm.active-amber{background:rgba(125,184,160,0.2);border-color:rgba(125,184,160,0.5);color:#4e9a7e;}
+.btn-sm{padding:6px 14px;border-radius:20px;border:1px solid rgba(160,145,180,0.35);background:rgba(255,252,255,0.55);color:rgba(80,62,105,0.7);font-size:12px;font-weight:500;cursor:pointer;transition:all 0.15s;}
+.btn-sm.active{background:rgba(155,126,184,0.22);border-color:rgba(130,100,160,0.55);color:#5e4272;font-weight:700;}
+.btn-sm.active-amber{background:rgba(110,170,145,0.2);border-color:rgba(100,160,135,0.5);color:#2e7a5e;font-weight:700;}
 
 /* 标签 */
 .tag{display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;border:1px solid rgba(180,165,200,0.3);background:rgba(240,235,248,0.6);color:rgba(110,90,130,0.7);cursor:pointer;transition:all 0.15s;}
@@ -113,8 +106,8 @@ textarea{resize:none;}
 h1{font-size:22px;font-weight:700;}
 h2{font-size:18px;font-weight:600;}
 h3{font-size:15px;font-weight:600;}
-.muted{color:rgba(100,85,120,0.55);}
-.muted-sm{color:rgba(110,95,130,0.4);font-size:11px;}
+.muted{color:rgba(70,55,90,0.65);}
+.muted-sm{color:rgba(80,65,100,0.55);font-size:11px;}
 .text-rose{color:#f43f5e;}
 .text-amber{color:#f59e0b;}
 .text-green{color:#10b981;}
@@ -418,7 +411,7 @@ function renderExList(list){
   return list.map(e=>{
     const avg=avgRating(e.id),cnt=getRevs(e.id).length,chk=!!getCheckin(e.id);
     const dist=MOCK_DIST[e.id];
-    const distStr=dist?(dist<10?`${dist}km`:dist<100?`${dist}km`:`${(dist/1000).toFixed(1)}千km`):'';
+    const distStr=dist?`${dist}km`:'';
     return`<div class="exhibit-card" onclick="openEx('${e.id}')">
       <div class="flex items-center gap12">
         <div class="exhibit-icon">${e.cover}</div>
