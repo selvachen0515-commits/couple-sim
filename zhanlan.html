@@ -318,7 +318,7 @@ function renderSetup(){
         <p class="muted fs13 mt8">记录你的每一次观展足迹</p>
       </div>
       <div class="card" style="padding:20px;">
-        <h3 class="text-center mb16" style="color:rgba(255,255,255,0.8);">办理你的专属护照</h3>
+        <h3 class="text-center mb16" style="color:#1a1020;">办理你的专属护照</h3>
         <input type="text" id="sname" maxlength="12" placeholder="你的昵称" value="${data.user?.name||''}" style="margin-bottom:10px;">
         <input type="text" id="scity" maxlength="8" placeholder="所在城市（如：上海）" value="${data.user?.city||''}" style="margin-bottom:16px;">
         <p class="muted-sm mb8">选一个头像</p>
@@ -442,26 +442,26 @@ window.openEx=id=>{
   $('modals').innerHTML=`
   <div class="modal-bg" onclick="if(event.target===this)closeModal()">
     <div class="modal-box">
-      <div style="background:linear-gradient(135deg,rgba(159,18,57,0.7),rgba(146,64,14,0.7));padding:24px;text-align:center;position:relative;">
-        <button onclick="closeModal()" style="position:absolute;top:12px;right:16px;background:none;border:none;color:rgba(255,255,255,0.4);font-size:20px;cursor:pointer;">✕</button>
+      <div style="background:linear-gradient(135deg,rgba(200,175,220,0.8),rgba(175,210,195,0.8));padding:24px;text-align:center;position:relative;">
+        <button onclick="closeModal()" style="position:absolute;top:12px;right:16px;background:none;border:none;color:#6a5f72;font-size:20px;cursor:pointer;">✕</button>
         <div style="font-size:52px;margin-bottom:10px;">${e.cover}</div>
         <h2 style="margin-bottom:4px;">${e.name}</h2>
         <p class="muted fs13">${e.venue}</p>
         <div class="flex items-center justify-center gap8 mt8">
-          <span class="badge" style="background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);">${e.type}</span>
+          <span class="badge" style="background:rgba(155,126,184,0.15);color:#5e4272;">${e.type}</span>
           <span class="muted fs12">${e.city}</span>
         </div>
         ${avg>0?`<div style="margin-top:10px;">${starsHTML(Math.round(avg),18)}<span class="text-amber bold" style="margin-left:6px;">${avg}</span><span class="muted-sm" style="margin-left:4px;">(${revs.length}条)</span></div>`:'<p class="muted-sm" style="margin-top:8px;">暂无评分</p>'}
       </div>
       <div style="padding:20px;" class="space-y">
         <p class="muted fs13" style="line-height:1.7;">${e.desc}</p>
-        ${topTags.length?`<div><p class="muted-sm mb8">大家都说</p><div class="flex wrap gap8">${topTags.map(([t,n])=>`<span class="tag">${t} <span style="color:rgba(255,255,255,0.25)">×${n}</span></span>`).join('')}</div></div>`:''}
+        ${topTags.length?`<div><p class="muted-sm mb8">大家都说</p><div class="flex wrap gap8">${topTags.map(([t,n])=>`<span class="tag">${t} <span style="color:#8a7f92">×${n}</span></span>`).join('')}</div></div>`:''}
         ${photos.length?`<div><p class="muted-sm mb8">现场照片 (${photos.length})</p><div class="photo-grid">${photos.slice(0,9).map(p=>`<img src="${p}">`).join('')}</div></div>`:''}
         <div class="flex gap8">
           <button class="btn-primary" onclick="openReview('${e.id}')">${chk?'再写一条评价 ✍️':'我逛过这个展 ✍️'}</button>
           ${!chk?`<button class="btn-ghost" onclick="doCheckin('${e.id}',true)">仅打卡</button>`:''}
         </div>
-        ${revs.length?`<div><p class="bold fs13 mb12" style="color:rgba(255,255,255,0.7);">全部评价 (${revs.length})</p><div class="space-y">${revs.slice().reverse().map(r=>`<div class="card"><div class="flex items-center gap8 mb8"><span style="font-size:20px;">${r.ua||'🎫'}</span><span class="bold fs13">${r.un}</span><span class="muted-sm" style="margin-left:auto;">${fmtDate(r.ts)}</span></div>${r.rating?`<div style="margin-bottom:6px;">${starsHTML(r.rating,13)}</div>`:''} ${r.text?`<p class="fs13" style="color:rgba(255,255,255,0.65);line-height:1.6;margin-bottom:6px;">${r.text}</p>`:''} ${r.tags?.length?`<div class="flex wrap gap4">${r.tags.map(t=>`<span class="badge badge-rose">${t}</span>`).join('')}</div>`:''} ${r.photos?.length?`<div class="photo-grid" style="margin-top:8px;">${r.photos.map(p=>`<img src="${p}">`).join('')}</div>`:''}</div>`).join('')}</div></div>`:`<p class="text-center muted fs13" style="padding:20px 0;">还没有评价，来写第一条吧</p>`}
+        ${revs.length?`<div><p class="bold fs13 mb12" style="color:#2a2030;">全部评价 (${revs.length})</p><div class="space-y">${revs.slice().reverse().map(r=>`<div class="card"><div class="flex items-center gap8 mb8"><span style="font-size:20px;">${r.ua||'🎫'}</span><span class="bold fs13">${r.un}</span><span class="muted-sm" style="margin-left:auto;">${fmtDate(r.ts)}</span></div>${r.rating?`<div style="margin-bottom:6px;">${starsHTML(r.rating,13)}</div>`:''} ${r.text?`<p class="fs13" style="color:#3a2f42;line-height:1.6;margin-bottom:6px;">${r.text}</p>`:''} ${r.tags?.length?`<div class="flex wrap gap4">${r.tags.map(t=>`<span class="badge badge-rose">${t}</span>`).join('')}</div>`:''} ${r.photos?.length?`<div class="photo-grid" style="margin-top:8px;">${r.photos.map(p=>`<img src="${p}">`).join('')}</div>`:''}</div>`).join('')}</div></div>`:`<p class="text-center muted fs13" style="padding:20px 0;">还没有评价，来写第一条吧</p>`}
       </div>
     </div>
   </div>`;
@@ -477,11 +477,11 @@ function renderRevModal(eid){
     <div class="modal-box" style="padding:20px;">
       <div class="flex items-center justify-between mb16">
         <div><div class="bold fs14">${e.name}</div><div class="muted fs12">${e.venue}</div></div>
-        <button onclick="closeModal()" style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:18px;cursor:pointer;">✕</button>
+        <button onclick="closeModal()" style="background:none;border:none;color:#7a6f82;font-size:18px;cursor:pointer;">✕</button>
       </div>
       <div class="mb16">
         <p class="muted-sm mb8">综合评分</p>
-        <div class="flex gap4">${[1,2,3,4,5].map(i=>`<span onclick="setRv(${i},'${eid}')" style="font-size:32px;cursor:pointer;color:${_rv.rating>=i?'#f59e0b':'rgba(255,255,255,0.18)'};">★</span>`).join('')}<span class="muted fs12" style="align-self:center;margin-left:8px;">${['','太差了','不推荐','还可以','推荐','强烈推荐'][_rv.rating]||''}</span></div>
+        <div class="flex gap4">${[1,2,3,4,5].map(i=>`<span onclick="setRv(${i},'${eid}')" style="font-size:32px;cursor:pointer;color:${_rv.rating>=i?'#c8945a':'rgba(100,85,120,0.2)'};">★</span>`).join('')}<span class="muted fs12" style="align-self:center;margin-left:8px;">${['','太差了','不推荐','还可以','推荐','强烈推荐'][_rv.rating]||''}</span></div>
       </div>
       <div class="mb16">
         <p class="muted-sm mb8">快捷标签（可多选）</p>
@@ -495,7 +495,7 @@ function renderRevModal(eid){
         <p class="muted-sm mb8">上传现场照片（最多4张）</p>
         <div class="flex wrap gap8" id="photo-prev">
           ${_rv.photos.map((p,i)=>`<div style="position:relative;"><img src="${p}" style="width:64px;height:64px;object-fit:cover;border-radius:10px;"><button onclick="rmPhoto(${i},'${eid}')" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;background:#ef4444;border:none;border-radius:50%;color:#fff;font-size:10px;cursor:pointer;">✕</button></div>`).join('')}
-          ${_rv.photos.length<4?`<label style="width:64px;height:64px;border:2px dashed rgba(255,255,255,0.2);border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:24px;color:rgba(255,255,255,0.2);">+<input type="file" accept="image/*" multiple class="hidden" onchange="addPhotos(this,'${eid}')"></label>`:''}
+          ${_rv.photos.length<4?`<label style="width:64px;height:64px;border:2px dashed rgba(155,126,184,0.35);border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:24px;color:rgba(100,80,120,0.45);">+<input type="file" accept="image/*" multiple class="hidden" onchange="addPhotos(this,'${eid}')"></label>`:''}
         </div>
       </div>
       <button class="btn-primary" onclick="submitRev('${eid}')">提交评价并打卡 🎫</button>
@@ -548,9 +548,9 @@ function renderPassport(){
         </div>
       </div>
     </div>
-    ${taste.length?`<div class="card mb16"><p class="bold fs13 mb12" style="color:rgba(255,255,255,0.7);">✨ 审美画像</p><div class="flex gap8 mb12">${taste.map((t,i)=>`<div class="flex-1 text-center" style="background:rgba(255,255,255,0.06);border-radius:14px;padding:12px;${i===0?'border:1px solid rgba(244,63,94,0.4);':''}"><div style="font-size:24px;margin-bottom:4px;">${t.e}</div><div class="bold fs12" style="color:${i===0?'#fda4af':'rgba(255,255,255,0.6)'};">${t.l}</div>${i===0?'<div class="muted-sm">主要偏好</div>':''}</div>`).join('')}</div><p class="muted fs12">${taste[0]?.l}偏好者，通常钟情深度体验与视觉冲击。</p></div>`:''}
-    ${data.passport.stamps.length?`<div class="card mb16"><p class="bold fs13 mb12" style="color:rgba(255,255,255,0.7);">🔖 收集的章 (${data.passport.stamps.length})</p><div class="flex wrap gap8">${data.passport.stamps.map(s=>`<div class="stamp">${s}</div>`).join('')}</div></div>`:''}
-    <div class="card"><p class="bold fs13 mb16" style="color:rgba(255,255,255,0.7);">📅 观展足迹</p>
+    ${taste.length?`<div class="card mb16"><p class="bold fs13 mb12" style="color:#2a2030;">✨ 审美画像</p><div class="flex gap8 mb12">${taste.map((t,i)=>`<div class="flex-1 text-center" style="background:rgba(155,126,184,0.08);border-radius:14px;padding:12px;${i===0?'border:1px solid rgba(155,126,184,0.4);':''}"><div style="font-size:24px;margin-bottom:4px;">${t.e}</div><div class="bold fs12" style="color:${i===0?'#6a3f82':'#5a4f6a'};">${t.l}</div>${i===0?'<div class="muted-sm">主要偏好</div>':''}</div>`).join('')}</div><p class="muted fs12">${taste[0]?.l}偏好者，通常钟情深度体验与视觉冲击。</p></div>`:''}
+    ${data.passport.stamps.length?`<div class="card mb16"><p class="bold fs13 mb12" style="color:#2a2030;">🔖 收集的章 (${data.passport.stamps.length})</p><div class="flex wrap gap8">${data.passport.stamps.map(s=>`<div class="stamp">${s}</div>`).join('')}</div></div>`:''}
+    <div class="card"><p class="bold fs13 mb16" style="color:#2a2030;">📅 观展足迹</p>
     ${!cks.length?`<div class="text-center muted" style="padding:32px 0;"><div style="font-size:32px;margin-bottom:8px;">📭</div>还没有观展记录，去打卡第一个展吧！</div>`:`<div class="space-y">${cks.slice().reverse().map(c=>{const ex=getEx(c.exhibitId);if(!ex)return'';const rv=data.reviews.find(r=>r.exhibitId===c.exhibitId);return`<div class="timeline-item pointer" onclick="openEx('${c.exhibitId}')"><div class="timeline-dot">${ex.cover}</div><div class="flex-1"><div class="bold fs14">${ex.name}</div><div class="muted fs12">${ex.venue} · ${fmtDate(c.ts)}</div>${rv?.rating?`<div style="margin-top:4px;">${starsHTML(rv.rating,12)}</div>`:''} ${rv?.text?`<p class="fs12 muted" style="margin-top:2px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">${rv.text}</p>`:''}</div></div>`;}).join('')}</div>`}
     </div>
   </div>`;
@@ -603,21 +603,21 @@ function renderProfile(){
         <button class="btn-ghost fs12" onclick="openEditProfile()">编辑</button>
       </div>
       <div class="flex" style="text-align:center;justify-content:space-around;">
-        <div><div style="font-size:22px;font-weight:700;color:#fda4af;">${data.passport.checkins.length}</div><div class="muted fs12">逛展</div></div>
-        <div><div style="font-size:22px;font-weight:700;color:#fcd34d;">${myRevs.length}</div><div class="muted fs12">评价</div></div>
-        <div><div style="font-size:22px;font-weight:700;color:#6ee7b7;">${data.passport.stamps.length}</div><div class="muted fs12">印章</div></div>
+        <div><div style="font-size:22px;font-weight:700;color:#9b4a6a;">${data.passport.checkins.length}</div><div class="muted fs12">逛展</div></div>
+        <div><div style="font-size:22px;font-weight:700;color:#8a6a10;">${myRevs.length}</div><div class="muted fs12">评价</div></div>
+        <div><div style="font-size:22px;font-weight:700;color:#2a7a5a;">${data.passport.stamps.length}</div><div class="muted fs12">印章</div></div>
       </div>
     </div>
-    ${taste.length?`<div class="card"><p class="bold fs13 mb12" style="color:rgba(255,255,255,0.7);">✨ 审美画像</p><div class="space-y">${taste.map(t=>{const cnt=data.passport.checkins.filter(c=>TASTE_MAP[getEx(c.exhibitId)?.type]===t.id).length;const pct=Math.round(cnt/data.passport.checkins.length*100);return`<div class="flex items-center gap12"><span style="font-size:20px;width:28px;">${t.e}</span><div class="flex-1"><div class="flex justify-between fs12 mb8"><span style="color:rgba(255,255,255,0.7);">${t.l}</span><span class="muted">${pct}%</span></div><div class="progress-bar"><div class="progress-fill" style="width:${pct}%;"></div></div></div></div>`;}).join('')}</div></div>`:`<div class="card text-center muted" style="padding:24px;"><div style="font-size:32px;margin-bottom:8px;">🎭</div><div class="fs13">逛几个展后，这里会生成你的专属审美画像</div></div>`}
-    <div class="card"><p class="bold fs13 mb12" style="color:rgba(255,255,255,0.7);">我写的评价 (${myRevs.length})</p>${myRevs.length?`<div class="space-y">${myRevs.slice().reverse().slice(0,5).map(r=>{const ex=getEx(r.exhibitId);return`<div class="flex gap12 pointer" onclick="openEx('${r.exhibitId}')"><div style="width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">${ex?.cover||'🎫'}</div><div class="flex-1" style="min-width:0;"><div class="fs14 truncate">${ex?.name||'未知展览'}</div>${r.rating?`<div>${starsHTML(r.rating,12)}</div>`:''} ${r.text?`<p class="fs12 muted truncate">${r.text}</p>`:''}</div></div>`;}).join('')}</div>`:`<p class="text-center muted fs13" style="padding:16px 0;">还没有写过评价</p>`}</div>
-    <button onclick="if(confirm('确定清空所有数据？'))resetAll()" style="width:100%;padding:14px;border-radius:14px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.25);font-size:13px;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.12)';this.style.color='#f87171';" onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.color='rgba(255,255,255,0.25)';">清空数据重新开始</button>
+    ${taste.length?`<div class="card"><p class="bold fs13 mb12" style="color:#2a2030;">✨ 审美画像</p><div class="space-y">${taste.map(t=>{const cnt=data.passport.checkins.filter(c=>TASTE_MAP[getEx(c.exhibitId)?.type]===t.id).length;const pct=Math.round(cnt/data.passport.checkins.length*100);return`<div class="flex items-center gap12"><span style="font-size:20px;width:28px;">${t.e}</span><div class="flex-1"><div class="flex justify-between fs12 mb8"><span style="color:#2a2030;">${t.l}</span><span class="muted">${pct}%</span></div><div class="progress-bar"><div class="progress-fill" style="width:${pct}%;"></div></div></div></div>`;}).join('')}</div></div>`:`<div class="card text-center muted" style="padding:24px;"><div style="font-size:32px;margin-bottom:8px;">🎭</div><div class="fs13">逛几个展后，这里会生成你的专属审美画像</div></div>`}
+    <div class="card"><p class="bold fs13 mb12" style="color:#2a2030;">我写的评价 (${myRevs.length})</p>${myRevs.length?`<div class="space-y">${myRevs.slice().reverse().slice(0,5).map(r=>{const ex=getEx(r.exhibitId);return`<div class="flex gap12 pointer" onclick="openEx('${r.exhibitId}')"><div style="width:40px;height:40px;border-radius:10px;background:rgba(155,126,184,0.1);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">${ex?.cover||'🎫'}</div><div class="flex-1" style="min-width:0;"><div class="fs14 truncate">${ex?.name||'未知展览'}</div>${r.rating?`<div>${starsHTML(r.rating,12)}</div>`:''} ${r.text?`<p class="fs12 muted truncate">${r.text}</p>`:''}</div></div>`;}).join('')}</div>`:`<p class="text-center muted fs13" style="padding:16px 0;">还没有写过评价</p>`}</div>
+    <button onclick="if(confirm('确定清空所有数据？'))resetAll()" style="width:100%;padding:14px;border-radius:14px;background:rgba(200,185,210,0.15);border:1px solid rgba(180,165,200,0.3);color:rgba(100,80,120,0.45);font-size:13px;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.1)';this.style.color='#c0392b';" onmouseout="this.style.background='rgba(200,185,210,0.15)';this.style.color='rgba(100,80,120,0.45)';">清空数据重新开始</button>
   </div>`;
 }
 window.openEditProfile=()=>{
   $('modals').innerHTML=`
   <div class="modal-bg" onclick="if(event.target===this)closeModal()">
     <div class="modal-box" style="padding:20px;">
-      <div class="flex justify-between items-center mb16"><div class="bold">编辑资料</div><button onclick="closeModal()" style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:18px;cursor:pointer;">✕</button></div>
+      <div class="flex justify-between items-center mb16"><div class="bold">编辑资料</div><button onclick="closeModal()" style="background:none;border:none;color:#7a6f82;font-size:18px;cursor:pointer;">✕</button></div>
       <input type="text" id="e-name" maxlength="12" placeholder="昵称" value="${data.user.name}" style="margin-bottom:10px;">
       <input type="text" id="e-city" maxlength="8" placeholder="城市" value="${data.user.city}" style="margin-bottom:16px;">
       <div class="avatar-grid mb16">${AVATARS.map(e=>`<button class="avatar-btn${data.user.avatar===e?' sel':''}" onclick="data.user.avatar='${e}';save();closeModal();render();">${e}</button>`).join('')}</div>
