@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import type { PartnerPersonality, SceneConfig } from '@/types'
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+const openai = new OpenAI({
+  apiKey: process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY,
+  baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+})
 
 export const runtime = 'edge'
 
@@ -18,7 +21,7 @@ export async function POST(req: NextRequest) {
     const sensitivityLabels = { low: '低敏感', medium: '中敏感', high: '高敏感' }
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'gemini-2.0-flash',
       messages: [
         {
           role: 'system',

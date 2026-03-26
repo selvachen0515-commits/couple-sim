@@ -4,7 +4,8 @@ import { buildSystemPrompt } from '@/lib/prompts'
 import type { PartnerPersonality, SceneConfig, ChatMessage, AIResponse } from '@/types'
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY,
+  baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
 })
 
 export const runtime = 'edge'
@@ -24,12 +25,10 @@ export async function POST(req: NextRequest) {
 
     const systemPrompt = buildSystemPrompt(partner, scene, messages)
 
-    // 构建 OpenAI messages 格式
     const openaiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
       { role: 'system', content: systemPrompt },
     ]
 
-    // 添加历史对话
     for (const msg of messages) {
       if (msg.role === 'user') {
         openaiMessages.push({ role: 'user', content: msg.content })
@@ -38,11 +37,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 添加当前用户消息
     openaiMessages.push({ role: 'user', content: userMessage })
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'gemini-2.0-flash',
       messages: openaiMessages,
       temperature: 0.8,
       response_format: { type: 'json_object' },
@@ -60,7 +58,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '解析 AI 回复失败' }, { status: 500 })
     }
 
-    // 验证并补全必要字段
     const validatedResponse: AIResponse = {
       message: aiResponse.message || '...',
       emotionState: aiResponse.emotionState || '情绪状态未知',
@@ -76,12 +73,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(validatedResponse)
   } catch (error) {
     console.error('API Error:', error)
-    if (error instanceof OpenAI.APIError) {
-      return NextResponse.json(
-        { error: `OpenAI API 错误: ${error.message}` },
-        { status: error.status || 500 }
-      )
-    }
     return NextResponse.json({ error: '服务器内部错误' }, { status: 500 })
   }
 }
