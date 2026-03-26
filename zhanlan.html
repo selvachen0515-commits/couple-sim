@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>逛展护照 🎫 — 你的观展足迹</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+<style>
+* { font-family: 'Noto Sans SC', sans-serif; }
+body { background: #0f0e17; min-height: 100vh; color: #fffffe; }
+.handwriting { font-family: 'Ma Shan Zheng', cursive; }
+.fade-in { animation: fadeIn 0.35s ease; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+.modal-overlay { position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:100;display:flex;align-items:flex-end;justify-content:center;padding:0; }
+.modal-sheet { border-radius:24px 24px 0 0; max-height:90vh; overflow-y:auto; }
+.toast { position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:200;padding:10px 20px;border-radius:20px;font-size:13px;animation:fadeIn 0.3s ease;white-space:nowrap; }
+::-webkit-scrollbar { width:3px; }
+::-webkit-scrollbar-thumb { background:#3d3a5e; border-radius:3px; }
+.stamp { display:inline-flex;align-items:center;justify-content:center;border-radius:12px;border:2px solid;font-size:20px;transition:all 0.2s; }
+.passport-page { background: linear-gradient(135deg, #fdf8f0 0%, #f5ede0 100%); }
+.star-rating span { cursor:pointer;font-size:22px;transition:transform 0.1s; }
+.star-rating span:hover { transform:scale(1.2); }
+.tag-badge { display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;cursor:pointer;transition:all 0.15s; }
+.photo-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:4px; }
+.photo-item { aspect-ratio:1;object-fit:cover;border-radius:8px;cursor:pointer; }
+@keyframes stamp-in { 0%{transform:scale(2) rotate(-20deg);opacity:0} 60%{transform:scale(0.9) rotate(2deg);opacity:1} 100%{transform:scale(1) rotate(0deg);opacity:1} }
+.stamp-anim { animation: stamp-in 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="modals"></div>
+<div id="toasts"></div>
+
+<script>
+// ===== 数据 =====
+function loadData() {
+  try { return JSON.parse(localStorage.getItem('zhanlan_data')||'null') || defaultData(); }
+  catch { return defaultData(); }
+}
+function defaultData() {
+  return {
+    user: null,
+    exhibits: [...PRESET_EXHIBITS],
+    reviews: [],
+    passport: { checkins: [], stamps: [] },
+    tab: 'discover',
+    setupDone: false,
+  };
+}
+function save() { localStorage.setItem('zhanlan_data', JSON.stringify(data)); }
+let data = loadData();
+
+// ===== 预置展览 =====
+const PRESET_EXHIBITS = [
+  { id:'e1', name:'梵高·星空之夜沉浸展', venue:'上海·西岸美术馆', city:'上海', type:'沉浸式', tags:['梵高','印象派','光影'], cover:'🌌', rating:0, ratingCount:0, startDate:'2026-01-01', endDate:'2026-06-30', desc:'全球巡回的梵高沉浸式艺术展，360°星空投影，仿佛走入画中世界。', userAdded:false },
+  { id:'e2', name:'故宫·千里江山特展', venue:'北京·故宫博物院', city:'北京', type:'博物馆', tags:['国宝','宋代','山水'], cover:'🏔️', rating:0, ratingCount:0, startDate:'2026-02-01', endDate:'2026-05-31', desc:'北宋王希孟《千里江山图》真迹特展，限量预约，一生必看。', userAdded:false },
+  { id:'e3', name:'草间弥生·无限镜屋', venue:'上海·龙美术馆', city:'上海', type:'当代艺术', tags:['草间弥生','装置','波点'], cover:'🔴', rating:0, ratingCount:0, startDate:'2026-03-01', endDate:'2026-07-31', desc:'无限延伸的镜面空间，草间弥生标志性波点装置，排队两小时值得。', userAdded:false },
+  { id:'e4', name:'自然之境·雨林生态展', venue:'广州·广东省博物馆', city:'广州', type:'自然科学', tags:['自然','生态','科普'], cover:'🌿', rating:0, ratingCount:0, startDate:'2026-01-15', endDate:'2026-08-15', desc:'真实热带雨林植物与多媒体的结合，沉浸式探索地球生态系统。', userAdded:false },
+  { id:'e5', name:'包豪斯百年设计回顾展', venue:'北京·UCCA尤伦斯', city:'北京', type:'设计艺术', tags:['包豪斯','设计史','现代主义'], cover:'⬜', rating:0, ratingCount:0, startDate:'2026-02-15', endDate:'2026-06-15', desc:'纵览百年包豪斯设计遗产，从家具到建筑，现代设计DNA的起源。', userAdded:false },
+  { id:'e6', name:'AI创作艺术节', venue:'成都·东郊记忆', city:'成都', type:'科技艺术', tags:['AI','数字艺术','互动'], cover:'🤖', rating:0, ratingCount:0, startDate:'2026-03-20', endDate:'2026-05-20', desc:'人工智能与艺术家共同创作的视觉盛宴，可与作品实时互动。', userAdded:false },
+  { id:'e7', name:'宇宙漫游·NASA太空摄影展', venue:'深圳·南山博物馆', city:'深圳', type:'摄影展', tags:['NASA','宇宙','摄影'], cover:'🚀', rating:0, ratingCount:0, startDate:'2026-01-20', endDate:'2026-07-20', desc:'NASA官方授权，数十张震撼宇宙真实影像，沉默之中令人泪目。', userAdded:false },
+  { id:'e8', name:'街头涂鸦·城市墙面艺术节', venue:'上海·M50创意园', city:'上海', type:'街头艺术', tags:['涂鸦','街头','当代'], cover:'🎨', rating:0, ratingCount:0, startDate:'2026-04-01', endDate:'2026-09-30', desc:'国际街头艺术家现场创作，整条街巷变成流动美术馆。', userAdded:false },
+];
+
+// ===== 展览类型 & 标签 =====
+const EXHIBIT_TYPES = ['沉浸式','博物馆','当代艺术','自然科学','设计艺术','科技艺术','摄影展','街头艺术','装置艺术','快闪展','艺术节','音乐现场','其他'];
+const QUICK_TAGS = ['值得二刷','哭了','人太多','性价比高','必须预约','带娃友好','网红打卡','适合独行','需要讲解','灯光绝了','内容深度','互动感强','高冷难懂','票价偏贵'];
+const TASTE_TYPES = [
+  { id:'classic', label:'古典美学', emoji:'🏛️', desc:'偏爱传统、历史、古典艺术' },
+  { id:'contemporary', label:'当代先锋', emoji:'🔺', desc:'热衷当代艺术与实验创作' },
+  { id:'immersive', label:'沉浸体验', emoji:'🌌', desc:'享受沉浸式感官冲击' },
+  { id:'nature', label:'自然探索', emoji:'🌿', desc:'钟情自然科学与生态' },
+  { id:'design', label:'设计迷', emoji:'⚡', desc:'关注设计、建筑与工业美学' },
+  { id:'street', label:'街头文化', emoji:'🎨', desc:'热爱街头艺术与城市美学' },
+  { id:'tech', label:'科技前沿', emoji:'🤖', desc:'追逐数字艺术与科技展' },
+  { id:'photo', label:'影像收藏', emoji:'📷', desc:'痴迷摄影、纪录片式展览' },
+];
+const TYPE_TO_TASTE = {
+  '博物馆': 'classic', '当代艺术': 'contemporary', '沉浸式': 'immersive',
+  '自然科学': 'nature', '设计艺术': 'design', '街头艺术': 'street',
+  '科技艺术': 'tech', '摄影展': 'photo', '装置艺术': 'contemporary',
+  '快闪展': 'immersive', '艺术节': 'contemporary', '音乐现场': 'street',
+};
+const STAMP_MAP = {
+  '沉浸式':'🌌','博物馆':'🏛️','当代艺术':'🔺','自然科学':'🌿','设计艺术':'⚡',
+  '科技艺术':'🤖','摄影展':'📷','街头艺术':'🎨','装置艺术':'🎭','快闪展':'⚡',
+  '艺术节':'🎪','音乐现场':'🎵','其他':'🎫',
+};
+
+// ===== 工具 =====
+function showToast(msg, type='ok') {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.style.background = type==='err' ? '#dc2626' : type==='warn' ? '#d97706' : '#059669';
+  el.textContent = msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(()=>el.remove(), 2500);
+}
+function closeModal() { document.getElementById('modals').innerHTML = ''; render(); }
+function getExhibit(id) { return data.exhibits.find(e=>e.id===id); }
+function getReviews(eid) { return data.reviews.filter(r=>r.exhibitId===eid); }
+function getAvgRating(eid) {
+  const rs = getReviews(eid).filter(r=>r.rating>0);
+  if (!rs.length) return 0;
+  return (rs.reduce((a,r)=>a+r.rating,0)/rs.length).toFixed(1);
+}
+function getCheckin(eid) { return data.passport.checkins.find(c=>c.exhibitId===eid); }
+function getTasteProfile() {
+  const counts = {};
+  data.passport.checkins.forEach(c => {
+    const ex = getExhibit(c.exhibitId);
+    if (!ex) return;
+    const taste = TYPE_TO_TASTE[ex.type] || 'contemporary';
+    counts[taste] = (counts[taste]||0) + 1;
+  });
+  return Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([id])=>TASTE_TYPES.find(t=>t.id===id)).filter(Boolean);
+}
+function formatDate(ts) {
+  const d = new Date(ts);
+  return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+}
+function stars(n, size='text-base') {
+  return [1,2,3,4,5].map(i=>`<span class="${size} ${i<=n?'text-amber-400':'text-white/20'}">${i<=n?'★':'★'}</span>`).join('');
+}
+
+// ===== 主渲染 =====
+function render() {
+  if (!data.setupDone) { renderSetup(); return; }
+  document.getElementById('app').innerHTML = `
+    ${renderNav()}
+    <div class="max-w-lg mx-auto px-4 pb-24 pt-4">
+      ${data.tab==='discover' ? renderDiscover() : ''}
+      ${data.tab==='passport' ? renderPassport() : ''}
+      ${data.tab==='add' ? renderAdd() : ''}
+      ${data.tab==='profile' ? renderProfile() : ''}
+    </div>`;
+}
+
+// ===== 设置 =====
+function renderSetup() {
+  const u = data.user || { name:'', avatar:'🎫', city:'' };
+  document.getElementById('app').innerHTML = `
+  <div class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-sm fade-in">
+      <div class="text-center mb-8">
+        <div class="text-6xl mb-3">🎫</div>
+        <h1 class="text-3xl font-bold bg-gradient-to-r from-rose-400 to-amber-400 bg-clip-text text-transparent handwriting">逛展护照</h1>
+        <p class="text-white/40 mt-2 text-sm">记录你的每一次观展足迹</p>
+      </div>
+      <div class="bg-white/5 border border-white/10 rounded-3xl p-6">
+        <h2 class="text-base font-medium mb-5 text-center text-white/80">办理你的专属护照</h2>
+        <input id="s-name" type="text" maxlength="12" placeholder="你的昵称"
+          value="${u.name}"
+          class="w-full bg-white/10 border border-white/10 rounded-2xl px-4 py-3 text-sm outline-none focus:border-rose-400 placeholder-white/20 mb-3">
+        <input id="s-city" type="text" maxlength="8" placeholder="所在城市（如：上海）"
+          value="${u.city}"
+          class="w-full bg-white/10 border border-white/10 rounded-2xl px-4 py-3 text-sm outline-none focus:border-rose-400 placeholder-white/20 mb-4">
+        <div class="mb-4">
+          <p class="text-xs text-white/40 mb-2">选一个头像</p>
+          <div class="grid grid-cols-7 gap-2">
+            ${['🎫','🎨','🏛️','📷','🌿','🔺','🤖','🌌','⭐','🎭','🦋','🎪','🌙','🎯'].map(e=>`
+            <button onclick="selectAvatar('${e}')"
+              class="text-xl p-1.5 rounded-xl transition-all ${u.avatar===e?'bg-rose-500/40 ring-1 ring-rose-400':'bg-white/5 hover:bg-white/15'}">${e}</button>`).join('')}
+          </div>
+        </div>
+        <button onclick="finishSetup()"
+          class="w-full py-3 rounded-2xl bg-gradient-to-r from-rose-500 to-amber-500 font-medium text-sm hover:opacity-90">
+          领取我的护照 🎫
+        </button>
+      </div>
+      <p class="text-center text-white/20 text-xs mt-4">数据仅存本地，不上传</p>
+    </div>
+  </div>`;
+}
+window.selectAvatar = e => { if(!data.user) data.user={name:'',avatar:'🎫',city:''}; data.user.avatar=e; save(); renderSetup(); };
+window.finishSetup = () => {
+  const name = document.getElementById('s-name')?.value?.trim();
+  const city = document.getElementById('s-city')?.value?.trim();
+  if (!name) { showToast('给自己起个名字吧','err'); return; }
+  data.user = { name, city: city||'未知城市', avatar: data.user?.avatar||'🎫', joined: Date.now() };
+  data.setupDone = true;
+  save();
+  showToast('🎫 护照办好了！');
+  render();
+};
+
+// ===== 导航 =====
+function renderNav() {
+  const tabs = [
+    {id:'discover',label:'发现',emoji:'🔍'},
+    {id:'passport',label:'护照',emoji:'🎫'},
+    {id:'add',label:'收录',emoji:'➕'},
+    {id:'profile',label:'我的',emoji:'👤'},
+  ];
+  return `
+  <nav class="fixed bottom-0 left-0 right-0 bg-black/70 backdrop-blur border-t border-white/10 z-50">
+    <div class="flex max-w-lg mx-auto">
+      ${tabs.map(t=>`
+      <button onclick="setTab('${t.id}')"
+        class="flex-1 flex flex-col items-center py-3 transition-all ${data.tab===t.id?'text-rose-400':'text-white/30 hover:text-white/60'}">
+        <span class="text-xl">${t.emoji}</span>
+        <span class="text-xs mt-0.5">${t.label}</span>
+      </button>`).join('')}
+    </div>
+  </nav>`;
+}
+window.setTab = t => { data.tab=t; save(); render(); };
+
+// ===== 发现页 =====
+let _filter = { type:'', city:'', q:'' };
+function renderDiscover() {
+  const cities = [...new Set(data.exhibits.map(e=>e.city))];
+  let list = data.exhibits.filter(e => {
+    if (_filter.type && e.type!==_filter.type) return false;
+    if (_filter.city && e.city!==_filter.city) return false;
+    if (_filter.q && !e.name.includes(_filter.q) && !e.venue.includes(_filter.q)) return false;
+    return true;
+  });
+  return `
+  <div class="fade-in">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold">发现展览</h2>
+      <span class="text-xs text-white/30">${data.exhibits.length} 个展览</span>
+    </div>
+
+    <!-- 搜索 -->
+    <div class="relative mb-3">
+      <input type="text" placeholder="搜索展览名称或场馆…" value="${_filter.q}"
+        oninput="_filter.q=this.value;renderDiscoverInPlace()"
+        class="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-2.5 text-sm outline-none focus:border-rose-400/50 placeholder-white/20 pr-10">
+      <span class="absolute right-3 top-2.5 text-white/20">🔍</span>
+    </div>
+
+    <!-- 筛选 -->
+    <div class="flex gap-2 mb-4 overflow-x-auto pb-1 scrollbar-hide">
+      <button onclick="_filter.city='';renderDiscoverInPlace()"
+        class="flex-shrink-0 text-xs px-3 py-1.5 rounded-full transition-all ${!_filter.city?'bg-rose-500 text-white':'bg-white/10 text-white/50'}">全部城市</button>
+      ${cities.map(c=>`
+      <button onclick="_filter.city='${c}';renderDiscoverInPlace()"
+        class="flex-shrink-0 text-xs px-3 py-1.5 rounded-full transition-all ${_filter.city===c?'bg-rose-500 text-white':'bg-white/10 text-white/50'}">${c}</button>`).join('')}
+    </div>
+    <div class="flex gap-2 mb-5 overflow-x-auto pb-1">
+      <button onclick="_filter.type='';renderDiscoverInPlace()"
+        class="flex-shrink-0 text-xs px-3 py-1.5 rounded-full transition-all ${!_filter.type?'bg-amber-500 text-white':'bg-white/10 text-white/50'}">全类型</button>
+      ${EXHIBIT_TYPES.slice(0,8).map(t=>`
+      <button onclick="_filter.type='${t}';renderDiscoverInPlace()"
+        class="flex-shrink-0 text-xs px-3 py-1.5 rounded-full transition-all ${_filter.type===t?'bg-amber-500 text-white':'bg-white/10 text-white/50'}">${t}</button>`).join('')}
+    </div>
+
+    <!-- 列表 -->
+    <div id="discover-list" class="space-y-3">
+      ${renderExhibitList(list)}
+    </div>
+  </div>`;
+}
+window.renderDiscoverInPlace = () => {
+  let list = data.exhibits.filter(e => {
+    if (_filter.type && e.type!==_filter.type) return false;
+    if (_filter.city && e.city!==_filter.city) return false;
+    if (_filter.q && !e.name.includes(_filter.q) && !e.venue.includes(_filter.q)) return false;
+    return true;
+  });
+  const el = document.getElementById('discover-list');
+  if (el) el.innerHTML = renderExhibitList(list);
+};
+function renderExhibitList(list) {
+  if (!list.length) return `<div class="text-center py-12 text-white/30">没有找到符合条件的展览</div>`;
+  return list.map(e => {
+    const avg = getAvgRating(e.id);
+    const cnt = getReviews(e.id).length;
+    const checked = !!getCheckin(e.id);
+    return `
+    <div class="bg-white/5 border border-white/10 rounded-2xl p-4 cursor-pointer hover:bg-white/8 transition-all"
+      onclick="openExhibit('${e.id}')">
+      <div class="flex gap-3">
+        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-rose-900/60 to-amber-900/60 flex items-center justify-center text-3xl flex-shrink-0">${e.cover}</div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-start justify-between gap-2">
+            <div class="font-medium text-sm leading-tight truncate flex-1">${e.name}</div>
+            ${checked ? '<span class="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full flex-shrink-0">✓ 已逛</span>' : ''}
+          </div>
+          <div class="text-xs text-white/40 mt-1 truncate">${e.venue}</div>
+          <div class="flex items-center gap-3 mt-2">
+            <span class="text-xs bg-white/10 text-white/50 px-2 py-0.5 rounded-full">${e.type}</span>
+            ${avg>0 ? `<span class="text-xs text-amber-400">★ ${avg}</span><span class="text-xs text-white/30">(${cnt})</span>` : '<span class="text-xs text-white/20">暂无评分</span>'}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ===== 展览详情 =====
+window.openExhibit = (id) => {
+  const e = getExhibit(id);
+  if (!e) return;
+  const reviews = getReviews(id);
+  const avg = getAvgRating(id);
+  const checked = getCheckin(id);
+  const allTags = {};
+  reviews.forEach(r => r.tags?.forEach(t => { allTags[t]=(allTags[t]||0)+1; }));
+  const topTags = Object.entries(allTags).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const allPhotos = reviews.flatMap(r=>r.photos||[]);
+
+  document.getElementById('modals').innerHTML = `
+  <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal-sheet w-full max-w-lg bg-[#1a1825] border-t border-white/10">
+      <!-- 头图 -->
+      <div class="bg-gradient-to-br from-rose-900/80 to-amber-900/80 p-6 text-center relative">
+        <button onclick="closeModal()" class="absolute top-4 right-4 text-white/40 hover:text-white text-xl">✕</button>
+        <div class="text-6xl mb-3">${e.cover}</div>
+        <h2 class="text-lg font-bold mb-1">${e.name}</h2>
+        <p class="text-sm text-white/60">${e.venue}</p>
+        <div class="flex items-center justify-center gap-2 mt-2">
+          <span class="text-xs bg-white/20 px-2 py-0.5 rounded-full">${e.type}</span>
+          <span class="text-xs text-white/40">${e.city}</span>
+        </div>
+        ${avg>0 ? `
+        <div class="flex items-center justify-center gap-1 mt-3">
+          ${stars(Math.round(avg),'text-lg')}
+          <span class="text-amber-400 font-bold ml-1">${avg}</span>
+          <span class="text-white/40 text-xs">(${reviews.length}条评价)</span>
+        </div>` : '<div class="text-white/30 text-xs mt-3">暂无评分</div>'}
+      </div>
+
+      <div class="p-5 space-y-5">
+        <!-- 简介 -->
+        <p class="text-sm text-white/60 leading-relaxed">${e.desc}</p>
+
+        <!-- 热门标签 -->
+        ${topTags.length>0 ? `
+        <div>
+          <div class="text-xs text-white/30 mb-2">大家都说</div>
+          <div class="flex flex-wrap gap-2">
+            ${topTags.map(([t,n])=>`
+            <span class="tag-badge bg-white/10 text-white/60 border border-white/10">
+              ${t} <span class="text-white/30">×${n}</span>
+            </span>`).join('')}
+          </div>
+        </div>` : ''}
+
+        <!-- 照片墙 -->
+        ${allPhotos.length>0 ? `
+        <div>
+          <div class="text-xs text-white/30 mb-2">现场照片 (${allPhotos.length})</div>
+          <div class="photo-grid">
+            ${allPhotos.slice(0,9).map(p=>`<img src="${p}" class="photo-item" />`).join('')}
+          </div>
+        </div>` : ''}
+
+        <!-- 操作按钮 -->
+        <div class="flex gap-3">
+          <button onclick="openReviewModal('${e.id}')"
+            class="flex-1 py-3 rounded-2xl bg-gradient-to-r from-rose-500 to-amber-500 text-sm font-medium">
+            ${checked ? '再写一条评价 ✍️' : '我逛过这个展 ✍️'}
+          </button>
+          ${!checked ? `
+          <button onclick="quickCheckin('${e.id}')"
+            class="py-3 px-4 rounded-2xl bg-white/10 text-sm text-white/60 hover:bg-white/20">
+            仅打卡
+          </button>` : ''}
+        </div>
+
+        <!-- 评价列表 -->
+        ${reviews.length>0 ? `
+        <div>
+          <div class="text-sm font-medium mb-3 text-white/70">全部评价 (${reviews.length})</div>
+          <div class="space-y-4">
+            ${reviews.slice().reverse().map(r=>`
+            <div class="bg-white/5 rounded-2xl p-4">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-xl">${r.userAvatar||'🎫'}</span>
+                <span class="text-sm font-medium">${r.userName}</span>
+                <span class="text-xs text-white/30 ml-auto">${formatDate(r.ts)}</span>
+              </div>
+              ${r.rating>0 ? `<div class="mb-2">${stars(r.rating,'text-sm')}</div>` : ''}
+              ${r.text ? `<p class="text-sm text-white/70 leading-relaxed mb-2">${r.text}</p>` : ''}
+              ${r.tags?.length ? `
+              <div class="flex flex-wrap gap-1 mb-2">
+                ${r.tags.map(t=>`<span class="tag-badge bg-rose-500/15 text-rose-300/80">${t}</span>`).join('')}
+              </div>` : ''}
+              ${r.photos?.length ? `
+              <div class="photo-grid mt-2">
+                ${r.photos.map(p=>`<img src="${p}" class="photo-item" />`).join('')}
+              </div>` : ''}
+            </div>`).join('')}
+          </div>
+        </div>` : `
+        <div class="text-center py-6 text-white/30 text-sm">还没有评价，来写第一条吧</div>`}
+      </div>
+    </div>
+  </div>`;
+};
+
+// ===== 写评价弹窗 =====
+let _reviewState = { rating:0, text:'', tags:[], photos:[] };
+window.openReviewModal = (eid) => {
+  const e = getExhibit(eid);
+  _reviewState = { rating:0, text:'', tags:[], photos:[] };
+  renderReviewModal(eid, e);
+};
+function renderReviewModal(eid, e) {
+  document.getElementById('modals').innerHTML = `
+  <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal-sheet w-full max-w-lg bg-[#1a1825] border-t border-white/10 p-5">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <div class="font-medium text-sm">${e.name}</div>
+          <div class="text-xs text-white/40">${e.venue}</div>
+        </div>
+        <button onclick="closeModal()" class="text-white/30 hover:text-white">✕</button>
+      </div>
+
+      <!-- 评分 -->
+      <div class="mb-5">
+        <div class="text-xs text-white/40 mb-2">综合评分</div>
+        <div class="star-rating flex gap-1">
+          ${[1,2,3,4,5].map(i=>`
+          <span onclick="setReviewRating(${i},'${eid}')" class="text-3xl ${_reviewState.rating>=i?'text-amber-400':'text-white/20'}">★</span>`).join('')}
+          <span class="text-sm text-white/40 self-center ml-2">${['','太差了','不推荐','还可以','推荐','强烈推荐'][_reviewState.rating]||''}</span>
+        </div>
+      </div>
+
+      <!-- 快捷标签 -->
+      <div class="mb-4">
+        <div class="text-xs text-white/40 mb-2">快速标签（可多选）</div>
+        <div class="flex flex-wrap gap-2">
+          ${QUICK_TAGS.map(t=>`
+          <button onclick="toggleReviewTag('${t}','${eid}')"
+            class="tag-badge border transition-all ${_reviewState.tags.includes(t)?'bg-rose-500/30 border-rose-400/50 text-rose-200':'bg-white/5 border-white/10 text-white/50'}">
+            ${t}
+          </button>`).join('')}
+        </div>
+      </div>
+
+      <!-- 文字评价 -->
+      <div class="mb-4">
+        <div class="text-xs text-white/40 mb-2">说点什么（可选）</div>
+        <textarea id="review-text" placeholder="写下你的观展感受……"
+          oninput="_reviewState.text=this.value"
+          class="w-full bg-white/5 border border-white/10 rounded-2xl p-3 text-sm text-white/80 outline-none focus:border-rose-400/50 placeholder-white/20 resize-none h-24">${_reviewState.text}</textarea>
+      </div>
+
+      <!-- 上传照片 -->
+      <div class="mb-5">
+        <div class="text-xs text-white/40 mb-2">上传现场照片（最多4张）</div>
+        <div class="flex gap-2 flex-wrap" id="photo-preview">
+          ${_reviewState.photos.map((p,i)=>`
+          <div class="relative w-16 h-16">
+            <img src="${p}" class="w-16 h-16 object-cover rounded-xl" />
+            <button onclick="removePhoto(${i},'${eid}')" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center">✕</button>
+          </div>`).join('')}
+          ${_reviewState.photos.length < 4 ? `
+          <label for="review-photo" class="w-16 h-16 border-2 border-dashed border-white/20 rounded-xl flex items-center justify-center cursor-pointer hover:border-rose-400/50 text-2xl text-white/20">+
+            <input type="file" id="review-photo" accept="image/*" multiple class="hidden" onchange="addPhotos(this,'${eid}')">
+          </label>` : ''}
+        </div>
+      </div>
+
+      <button onclick="submitReview('${eid}')"
+        class="w-full py-3 rounded-2xl bg-gradient-to-r from-rose-500 to-amber-500 font-medium text-sm">
+        提交评价并打卡 🎫
+      </button>
+    </div>
+  </div>`;
+}
+window.setReviewRating = (n, eid) => { _reviewState.rating=n; renderReviewModal(eid, getExhibit(eid)); };
+window.toggleReviewTag = (t, eid) => {
+  const idx = _reviewState.tags.indexOf(t);
+  if (idx>=0) _reviewState.tags.splice(idx,1); else _reviewState.tags.push(t);
+  renderReviewModal(eid, getExhibit(eid));
+};
+window.addPhotos = (input, eid) => {
+  const files = Array.from(input.files);
+  const remaining = 4 - _reviewState.photos.length;
+  files.slice(0, remaining).forEach(file => {
+    if (file.size > 5*1024*1024) { showToast('单张图片不超过5MB','warn'); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      _reviewState.photos.push(e.target.result);
+      renderReviewModal(eid, getExhibit(eid));
+    };
+    reader.readAsDataURL(file);
+  });
+};
+window.removePhoto = (i, eid) => { _reviewState.photos.splice(i,1); renderReviewModal(eid, getExhibit(eid)); };
+window.submitReview = (eid) => {
+  const text = document.getElementById('review-text')?.value?.trim() || _reviewState.text;
+  if (!_reviewState.rating && !text && !_reviewState.tags.length) {
+    showToast('至少留下评分或标签吧','warn'); return;
+  }
+  const review = {
+    id: 'r-'+Date.now(),
+    exhibitId: eid,
+    userName: data.user.name,
+    userAvatar: data.user.avatar,
+    rating: _reviewState.rating,
+    text,
+    tags: [..._reviewState.tags],
+    photos: [..._reviewState.photos],
+    ts: Date.now(),
+  };
+  data.reviews.push(review);
+  doCheckinExhibit(eid);
+  save();
+  showToast('🎫 评价已提交，护照盖章！');
+  closeModal();
+};
+window.quickCheckin = (eid) => {
+  doCheckinExhibit(eid);
+  save();
+  showToast('✓ 打卡成功！');
+  closeModal();
+};
+function doCheckinExhibit(eid) {
+  if (getCheckin(eid)) return;
+  const ex = getExhibit(eid);
+  const stamp = STAMP_MAP[ex?.type] || '🎫';
+  data.passport.checkins.push({ exhibitId:eid, ts:Date.now() });
+  if (!data.passport.stamps.includes(stamp)) data.passport.stamps.push(stamp);
+}
+
+// ===== 护照页 =====
+function renderPassport() {
+  const checkins = data.passport.checkins;
+  const taste = getTasteProfile();
+  const totalTypes = [...new Set(checkins.map(c=>getExhibit(c.exhibitId)?.type).filter(Boolean))];
+
+  return `
+  <div class="fade-in">
+    <!-- 护照封面 -->
+    <div class="passport-page rounded-3xl p-6 mb-4 text-center shadow-2xl relative overflow-hidden">
+      <div class="absolute inset-0 opacity-5" style="background:repeating-linear-gradient(45deg,#8b4513 0,#8b4513 1px,transparent 0,transparent 50%);background-size:20px 20px;"></div>
+      <div class="relative">
+        <div class="text-4xl mb-2">🎫</div>
+        <h2 class="handwriting text-2xl text-amber-900 font-bold">逛展护照</h2>
+        <p class="text-amber-800/60 text-xs mb-4">EXHIBITION PASSPORT</p>
+        <div class="text-5xl mb-2">${data.user.avatar}</div>
+        <div class="text-amber-900 font-bold text-lg">${data.user.name}</div>
+        <div class="text-amber-800/60 text-xs">${data.user.city} · 加入于 ${formatDate(data.user.joined)}</div>
+        <div class="mt-4 flex justify-center gap-6 text-center">
+          <div><div class="text-2xl font-bold text-amber-900">${checkins.length}</div><div class="text-xs text-amber-800/60">逛展记录</div></div>
+          <div><div class="text-2xl font-bold text-amber-900">${data.reviews.length}</div><div class="text-xs text-amber-800/60">发表评价</div></div>
+          <div><div class="text-2xl font-bold text-amber-900">${totalTypes.length}</div><div class="text-xs text-amber-800/60">展览类型</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 审美画像 -->
+    ${taste.length>0 ? `
+    <div class="bg-white/5 border border-white/10 rounded-2xl p-4 mb-4">
+      <div class="text-sm font-medium mb-3 text-white/70">✨ 你的审美画像</div>
+      <div class="flex gap-3">
+        ${taste.map((t,i)=>`
+        <div class="flex-1 bg-gradient-to-b from-white/10 to-white/5 rounded-2xl p-3 text-center ${i===0?'ring-1 ring-rose-400/50':''}">
+          <div class="text-2xl mb-1">${t.emoji}</div>
+          <div class="text-xs font-medium ${i===0?'text-rose-300':'text-white/60'}">${t.label}</div>
+          ${i===0?'<div class="text-xs text-white/30 mt-0.5">主要偏好</div>':''}
+        </div>`).join('')}
+      </div>
+      <p class="text-xs text-white/30 mt-3">${taste[0]?.desc||''}</p>
+    </div>` : ''}
+
+    <!-- 邮戳收集 -->
+    ${data.passport.stamps.length>0 ? `
+    <div class="bg-white/5 border border-white/10 rounded-2xl p-4 mb-4">
+      <div class="text-sm font-medium mb-3 text-white/70">🔖 收集的章 (${data.passport.stamps.length})</div>
+      <div class="flex flex-wrap gap-3">
+        ${data.passport.stamps.map(s=>`
+        <div class="stamp w-12 h-12 border-rose-400/50 text-rose-400 bg-rose-400/10 stamp-anim">${s}</div>`).join('')}
+      </div>
+    </div>` : ''}
+
+    <!-- 观展记录时间线 -->
+    <div class="bg-white/5 border border-white/10 rounded-2xl p-4">
+      <div class="text-sm font-medium mb-4 text-white/70">📅 观展足迹</div>
+      ${checkins.length===0 ? `
+      <div class="text-center py-8 text-white/30 text-sm">
+        <div class="text-3xl mb-2">📭</div>
+        还没有观展记录，去发现页打卡第一个展吧！
+      </div>` : `
+      <div class="space-y-3">
+        ${checkins.slice().reverse().map(c=>{
+          const ex = getExhibit(c.exhibitId);
+          if (!ex) return '';
+          const rev = data.reviews.find(r=>r.exhibitId===c.exhibitId);
+          return `
+          <div class="flex gap-3 cursor-pointer hover:opacity-80" onclick="openExhibit('${c.exhibitId}')">
+            <div class="flex flex-col items-center">
+              <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-rose-600/50 to-amber-600/50 flex items-center justify-center text-lg">${ex.cover}</div>
+              <div class="w-0.5 bg-white/10 flex-1 mt-1"></div>
+            </div>
+            <div class="flex-1 pb-3">
+              <div class="text-sm font-medium">${ex.name}</div>
+              <div class="text-xs text-white/40">${ex.venue} · ${formatDate(c.ts)}</div>
+              ${rev?.rating ? `<div class="mt-1">${stars(rev.rating,'text-xs')}</div>` : ''}
+              ${rev?.text ? `<p class="text-xs text-white/50 mt-1 line-clamp-2">${rev.text}</p>` : ''}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`}
+    </div>
+  </div>`;
+}
+
+// ===== 收录展览页 =====
+let _addState = { name:'', venue:'', city:'', type:'', cover:'🎫', desc:'', startDate:'', endDate:'' };
+function renderAdd() {
+  return `
+  <div class="fade-in">
+    <h2 class="text-lg font-bold mb-1">收录新展览</h2>
+    <p class="text-white/40 text-sm mb-5">把你发现的好展览分享给大家</p>
+
+    <div class="space-y-3">
+      <div>
+        <div class="text-xs text-white/40 mb-1.5">展览名称 *</div>
+        <input type="text" placeholder="完整展览名称" maxlength="40"
+          value="${_addState.name}" oninput="_addState.name=this.value"
+          class="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm outline-none focus:border-rose-400/50 placeholder-white/20">
+      </div>
+      <div>
+        <div class="text-xs text-white/40 mb-1.5">场馆 *</div>
+        <input type="text" placeholder="如：上海·龙美术馆" maxlength="30"
+          value="${_addState.venue}" oninput="_addState.venue=this.value"
+          class="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm outline-none focus:border-rose-400/50 placeholder-white/20">
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <div class="text-xs text-white/40 mb-1.5">城市 *</div>
+          <input type="text" placeholder="城市" maxlength="8"
+            value="${_addState.city}" oninput="_addState.city=this.value"
+            class="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm outline-none focus:border-rose-400/50 placeholder-white/20">
+        </div>
+        <div>
+          <div class="text-xs text-white/40 mb-1.5">封面图标</div>
+          <input type="text" placeholder="一个 emoji" maxlength="4"
+            value="${_addState.cover}" oninput="_addState.cover=this.value"
+            class="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-center outline-none focus:border-rose-400/50 placeholder-white/20">
+        </div>
+      </div>
+      <div>
+        <div class="text-xs text-white/40 mb-1.5">展览类型 *</div>
+        <div class="flex flex-wrap gap-2">
+          ${EXHIBIT_TYPES.map(t=>`
+          <button onclick="_addState.type='${t}';renderAddInPlace()"
+            class="text-xs px-3 py-1.5 rounded-full border transition-all ${_addState.type===t?'bg-rose-500/30 border-rose-400/50 text-rose-200':'bg-white/5 border-white/10 text-white/50'}">
+            ${t}
+          </button>`).join('')}
+        </div>
+      </div>
+      <div>
+        <div class="text-xs text-white/40 mb-1.5">简介</div>
+        <textarea id="add-desc" placeholder="描述一下这个展览……" maxlength="200"
+          oninput="_addState.desc=this.value"
+          class="w-full bg-white/5 border border-white/10 rounded-2xl p-3 text-sm text-white/80 outline-none focus:border-rose-400/50 placeholder-white/20 resize-none h-20">${_addState.desc}</textarea>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <div class="text-xs text-white/40 mb-1.5">开始日期</div>
+          <input type="date" value="${_addState.startDate}" onchange="_addState.startDate=this.value"
+            class="w-full bg-white/5 border border-white/10 rounded-2xl px-3 py-3 text-sm outline-none focus:border-rose-400/50 text-white/70">
+        </div>
+        <div>
+          <div class="text-xs text-white/40 mb-1.5">结束日期</div>
+          <input type="date" value="${_addState.endDate}" onchange="_addState.endDate=this.value"
+            class="w-full bg-white/5 border border-white/10 rounded-2xl px-3 py-3 text-sm outline-none focus:border-rose-400/50 text-white/70">
+        </div>
+      </div>
+      <button onclick="submitNewExhibit()"
+        class="w-full py-3 rounded-2xl bg-gradient-to-r from-rose-500 to-amber-500 font-medium text-sm mt-2">
+        收录这个展览 ✓
+      </button>
+    </div>
+  </div>`;
+}
+window.renderAddInPlace = () => { document.getElementById('app').querySelector('.fade-in').outerHTML = renderAdd(); render(); };
+window.submitNewExhibit = () => {
+  const desc = document.getElementById('add-desc')?.value?.trim() || _addState.desc;
+  const s = { ..._addState, desc };
+  if (!s.name || !s.venue || !s.city || !s.type) { showToast('名称/场馆/城市/类型必填','warn'); return; }
+  const ex = {
+    id: 'u-'+Date.now(),
+    name: s.name, venue: s.venue, city: s.city, type: s.type,
+    cover: s.cover||'🎫', desc: s.desc||'暂无简介',
+    startDate: s.startDate, endDate: s.endDate,
+    tags: [], rating: 0, ratingCount: 0, userAdded: true,
+  };
+  data.exhibits.push(ex);
+  _addState = { name:'', venue:'', city:'', type:'', cover:'🎫', desc:'', startDate:'', endDate:'' };
+  save();
+  showToast('🎉 展览已收录！');
+  data.tab = 'discover';
+  render();
+};
+
+// ===== 我的页 =====
+function renderProfile() {
+  const myReviews = data.reviews.filter(r=>r.userName===data.user.name);
+  const taste = getTasteProfile();
+  return `
+  <div class="fade-in space-y-4">
+    <!-- 用户卡 -->
+    <div class="bg-gradient-to-br from-rose-900/40 to-amber-900/40 border border-white/10 rounded-3xl p-5">
+      <div class="flex items-center gap-4 mb-4">
+        <div class="text-5xl">${data.user.avatar}</div>
+        <div>
+          <div class="font-bold text-lg">${data.user.name}</div>
+          <div class="text-sm text-white/50">${data.user.city}</div>
+        </div>
+        <button onclick="openEditProfile()" class="ml-auto text-xs text-white/30 hover:text-white border border-white/10 px-3 py-1.5 rounded-full">编辑</button>
+      </div>
+      <div class="flex gap-4 text-center">
+        <div class="flex-1"><div class="text-xl font-bold text-rose-300">${data.passport.checkins.length}</div><div class="text-xs text-white/40">逛展</div></div>
+        <div class="flex-1"><div class="text-xl font-bold text-amber-300">${myReviews.length}</div><div class="text-xs text-white/40">评价</div></div>
+        <div class="flex-1"><div class="text-xl font-bold text-emerald-300">${data.passport.stamps.length}</div><div class="text-xs text-white/40">印章</div></div>
+      </div>
+    </div>
+
+    <!-- 审美画像详情 -->
+    ${taste.length>0 ? `
+    <div class="bg-white/5 border border-white/10 rounded-2xl p-4">
+      <div class="text-sm font-medium mb-3 text-white/70">✨ 审美画像</div>
+      <div class="space-y-2">
+        ${taste.map((t,i)=>{
+          const cnt = data.passport.checkins.filter(c=>TYPE_TO_TASTE[getExhibit(c.exhibitId)?.type]===t.id).length;
+          const pct = Math.round(cnt/data.passport.checkins.length*100);
+          return `
+          <div class="flex items-center gap-3">
+            <span class="text-xl w-8">${t.emoji}</span>
+            <div class="flex-1">
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-white/70">${t.label}</span>
+                <span class="text-white/30">${pct}%</span>
+              </div>
+              <div class="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-rose-500 to-amber-500 rounded-full" style="width:${pct}%"></div>
+              </div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>` : `
+    <div class="bg-white/5 border border-white/10 rounded-2xl p-5 text-center text-white/30 text-sm">
+      <div class="text-3xl mb-2">🎭</div>
+      逛几个展后，这里会生成你的专属审美画像
+    </div>`}
+
+    <!-- 我的评价 -->
+    <div class="bg-white/5 border border-white/10 rounded-2xl p-4">
+      <div class="text-sm font-medium mb-3 text-white/70">我写的评价 (${myReviews.length})</div>
+      ${myReviews.length===0 ? `<div class="text-center py-4 text-white/30 text-sm">还没有写过评价</div>` : `
+      <div class="space-y-3">
+        ${myReviews.slice().reverse().slice(0,5).map(r=>{
+          const ex = getExhibit(r.exhibitId);
+          return `
+          <div class="flex gap-3 cursor-pointer hover:opacity-80" onclick="openExhibit('${r.exhibitId}')">
+            <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-xl flex-shrink-0">${ex?.cover||'🎫'}</div>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm truncate">${ex?.name||'未知展览'}</div>
+              ${r.rating ? `<div>${stars(r.rating,'text-xs')}</div>` : ''}
+              ${r.text ? `<p class="text-xs text-white/40 truncate mt-0.5">${r.text}</p>` : ''}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`}
+    </div>
+
+    <!-- 重置 -->
+    <button onclick="if(confirm('确定要清空所有数据吗？'))resetData()"
+      class="w-full py-3 rounded-2xl bg-white/5 text-white/30 text-sm border border-white/10 hover:bg-red-500/10 hover:text-red-400 hover:border-red-400/20 transition-all">
+      清空数据重新开始
+    </button>
+  </div>`;
+}
+
+window.openEditProfile = () => {
+  document.getElementById('modals').innerHTML = `
+  <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal-sheet w-full max-w-lg bg-[#1a1825] border-t border-white/10 p-5">
+      <div class="flex justify-between items-center mb-5">
+        <div class="font-medium">编辑资料</div>
+        <button onclick="closeModal()" class="text-white/30 hover:text-white">✕</button>
+      </div>
+      <input id="edit-name" type="text" maxlength="12" placeholder="昵称" value="${data.user.name}"
+        class="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm outline-none focus:border-rose-400/50 placeholder-white/20 mb-3">
+      <input id="edit-city" type="text" maxlength="8" placeholder="城市" value="${data.user.city}"
+        class="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm outline-none focus:border-rose-400/50 placeholder-white/20 mb-4">
+      <div class="grid grid-cols-7 gap-2 mb-5">
+        ${['🎫','🎨','🏛️','📷','🌿','🔺','🤖','🌌','⭐','🎭','🦋','🎪','🌙','🎯'].map(e=>`
+        <button onclick="data.user.avatar='${e}';save();closeModal();render()"
+          class="text-xl p-2 rounded-xl ${data.user.avatar===e?'bg-rose-500/40 ring-1 ring-rose-400':'bg-white/5 hover:bg-white/15'}">${e}</button>`).join('')}
+      </div>
+      <button onclick="saveProfile()" class="w-full py-3 rounded-2xl bg-gradient-to-r from-rose-500 to-amber-500 font-medium text-sm">保存</button>
+    </div>
+  </div>`;
+};
+window.saveProfile = () => {
+  const name = document.getElementById('edit-name')?.value?.trim();
+  const city = document.getElementById('edit-city')?.value?.trim();
+  if (!name) { showToast('名字不能为空','err'); return; }
+  data.user.name = name;
+  data.user.city = city || data.user.city;
+  save();
+  showToast('已保存');
+  closeModal();
+};
+window.resetData = () => {
+  localStorage.removeItem('zhanlan_data');
+  data = defaultData();
+  render();
+};
+
+// ===== 初始化 =====
+render();
+</script>
+</body>
+</html>
