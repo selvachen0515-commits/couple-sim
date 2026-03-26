@@ -35,22 +35,8 @@ body { background: #0f0e17; min-height: 100vh; color: #fffffe; }
 
 <script>
 // ===== 数据 =====
-function loadData() {
-  try { return JSON.parse(localStorage.getItem('zhanlan_data')||'null') || defaultData(); }
-  catch { return defaultData(); }
-}
-function defaultData() {
-  return {
-    user: null,
-    exhibits: [...PRESET_EXHIBITS],
-    reviews: [],
-    passport: { checkins: [], stamps: [] },
-    tab: 'discover',
-    setupDone: false,
-  };
-}
 function save() { localStorage.setItem('zhanlan_data', JSON.stringify(data)); }
-let data = loadData();
+let data = null; // 在 PRESET_EXHIBITS 定义后初始化
 
 // ===== 预置展览 =====
 const PRESET_EXHIBITS = [
@@ -813,6 +799,21 @@ window.resetData = () => {
 };
 
 // ===== 初始化 =====
+function loadData() {
+  try { return JSON.parse(localStorage.getItem('zhanlan_data')||'null') || defaultData(); }
+  catch { return defaultData(); }
+}
+function defaultData() {
+  return {
+    user: null,
+    exhibits: JSON.parse(JSON.stringify(PRESET_EXHIBITS)),
+    reviews: [],
+    passport: { checkins: [], stamps: [] },
+    tab: 'discover',
+    setupDone: false,
+  };
+}
+data = loadData();
 render();
 </script>
 </body>
