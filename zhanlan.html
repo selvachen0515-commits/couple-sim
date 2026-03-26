@@ -3,29 +3,138 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>逛展护照 🎫 — 你的观展足迹</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+<title>逛展护照 🎫</title>
 <style>
-* { font-family: 'Noto Sans SC', sans-serif; }
-body { background: #0f0e17; min-height: 100vh; color: #fffffe; }
-.handwriting { font-family: 'Ma Shan Zheng', cursive; }
-.fade-in { animation: fadeIn 0.35s ease; }
-@keyframes fadeIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
-.modal-overlay { position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:100;display:flex;align-items:flex-end;justify-content:center;padding:0; }
-.modal-sheet { border-radius:24px 24px 0 0; max-height:90vh; overflow-y:auto; }
-.toast { position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:200;padding:10px 20px;border-radius:20px;font-size:13px;animation:fadeIn 0.3s ease;white-space:nowrap; }
-::-webkit-scrollbar { width:3px; }
-::-webkit-scrollbar-thumb { background:#3d3a5e; border-radius:3px; }
-.stamp { display:inline-flex;align-items:center;justify-content:center;border-radius:12px;border:2px solid;font-size:20px;transition:all 0.2s; }
-.passport-page { background: linear-gradient(135deg, #fdf8f0 0%, #f5ede0 100%); }
-.star-rating span { cursor:pointer;font-size:22px;transition:transform 0.1s; }
-.star-rating span:hover { transform:scale(1.2); }
-.tag-badge { display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;cursor:pointer;transition:all 0.15s; }
-.photo-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:4px; }
-.photo-item { aspect-ratio:1;object-fit:cover;border-radius:8px;cursor:pointer; }
-@keyframes stamp-in { 0%{transform:scale(2) rotate(-20deg);opacity:0} 60%{transform:scale(0.9) rotate(2deg);opacity:1} 100%{transform:scale(1) rotate(0deg);opacity:1} }
-.stamp-anim { animation: stamp-in 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#0f0e17;color:#fffffe;font-family:'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;min-height:100vh;}
+input,textarea,button{font-family:inherit;}
+
+/* 布局 */
+#app{max-width:480px;margin:0 auto;padding:16px 16px 80px;}
+nav{position:fixed;bottom:0;left:0;right:0;background:rgba(10,9,20,0.92);border-top:1px solid rgba(255,255,255,0.1);z-index:50;}
+.nav-inner{max-width:480px;margin:0 auto;display:flex;}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 0;background:none;border:none;color:rgba(255,255,255,0.35);cursor:pointer;font-size:12px;gap:3px;transition:color 0.2s;}
+.nav-btn.active{color:#f43f5e;}
+.nav-btn span:first-child{font-size:20px;}
+
+/* 卡片 */
+.card{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:18px;padding:16px;}
+.card-hero{background:linear-gradient(135deg,rgba(159,18,57,0.5),rgba(146,64,14,0.5));border:1px solid rgba(255,255,255,0.1);border-radius:18px;padding:20px;text-align:center;}
+
+/* 输入 */
+input[type=text],input[type=date],textarea{width:100%;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:12px 16px;color:#fffffe;font-size:14px;outline:none;transition:border-color 0.2s;}
+input:focus,textarea:focus{border-color:rgba(244,63,94,0.6);}
+input::placeholder,textarea::placeholder{color:rgba(255,255,255,0.2);}
+textarea{resize:none;}
+
+/* 按钮 */
+.btn-primary{width:100%;padding:14px;border-radius:14px;border:none;background:linear-gradient(135deg,#f43f5e,#f59e0b);color:#fff;font-size:14px;font-weight:600;cursor:pointer;transition:opacity 0.2s;}
+.btn-primary:hover{opacity:0.88;}
+.btn-ghost{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:10px 16px;color:rgba(255,255,255,0.6);font-size:13px;cursor:pointer;transition:background 0.2s;}
+.btn-ghost:hover{background:rgba(255,255,255,0.14);}
+.btn-sm{padding:6px 14px;border-radius:20px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.55);font-size:12px;cursor:pointer;transition:all 0.15s;}
+.btn-sm.active{background:rgba(244,63,94,0.3);border-color:rgba(244,63,94,0.5);color:#fda4af;}
+.btn-sm.active-amber{background:rgba(245,158,11,0.3);border-color:rgba(245,158,11,0.5);color:#fcd34d;}
+
+/* 标签 */
+.tag{display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.55);cursor:pointer;transition:all 0.15s;}
+.tag.selected{background:rgba(244,63,94,0.2);border-color:rgba(244,63,94,0.5);color:#fda4af;}
+
+/* 星星 */
+.stars{color:rgba(255,255,255,0.2);letter-spacing:2px;}
+.stars .on{color:#f59e0b;}
+
+/* modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:100;display:flex;align-items:flex-end;justify-content:center;}
+.modal-box{background:#1a1825;border-radius:24px 24px 0 0;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;border-top:1px solid rgba(255,255,255,0.1);}
+
+/* toast */
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:200;padding:10px 20px;border-radius:20px;font-size:13px;white-space:nowrap;color:#fff;}
+
+/* 展览卡 */
+.exhibit-card{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:16px;padding:14px;cursor:pointer;transition:background 0.15s;margin-bottom:10px;}
+.exhibit-card:hover{background:rgba(255,255,255,0.09);}
+.exhibit-icon{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,rgba(159,18,57,0.4),rgba(146,64,14,0.4));display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;}
+
+/* 护照 */
+.passport-cover{background:linear-gradient(135deg,#fdf3e0,#e8d5b0);border-radius:20px;padding:24px;text-align:center;color:#5c3d0a;position:relative;overflow:hidden;}
+.passport-cover::before{content:'';position:absolute;inset:0;opacity:0.04;background:repeating-linear-gradient(45deg,#8b4513 0,#8b4513 1px,transparent 0,transparent 14px);}
+
+/* 印章 */
+.stamp{width:48px;height:48px;border-radius:12px;border:2px solid rgba(244,63,94,0.5);background:rgba(244,63,94,0.1);display:inline-flex;align-items:center;justify-content:center;font-size:22px;}
+
+/* 进度条 */
+.progress-bar{height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;}
+.progress-fill{height:100%;background:linear-gradient(90deg,#f43f5e,#f59e0b);border-radius:3px;transition:width 0.6s;}
+
+/* 照片网格 */
+.photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;}
+.photo-grid img{aspect-ratio:1;object-fit:cover;border-radius:8px;width:100%;}
+
+/* 徽章 */
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;}
+.badge-green{background:rgba(16,185,129,0.2);color:#6ee7b7;}
+.badge-rose{background:rgba(244,63,94,0.15);color:#fda4af;}
+
+/* fade in */
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.fade{animation:fadeUp 0.3s ease;}
+
+/* 搜索区滚动隐藏滚动条 */
+.scroll-x{overflow-x:auto;scrollbar-width:none;}
+.scroll-x::-webkit-scrollbar{display:none;}
+.flex-row{display:flex;gap:8px;flex-wrap:nowrap;}
+
+/* setup */
+.setup-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+.avatar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:16px;}
+.avatar-btn{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:6px;font-size:20px;cursor:pointer;text-align:center;transition:all 0.15s;}
+.avatar-btn.sel{background:rgba(244,63,94,0.3);border-color:rgba(244,63,94,0.6);}
+
+/* 时间线 */
+.timeline-item{display:flex;gap:12px;margin-bottom:12px;}
+.timeline-dot{width:36px;height:36px;border-radius:10px;background:rgba(244,63,94,0.2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+
+h1{font-size:22px;font-weight:700;}
+h2{font-size:18px;font-weight:600;}
+h3{font-size:15px;font-weight:600;}
+.muted{color:rgba(255,255,255,0.4);}
+.muted-sm{color:rgba(255,255,255,0.25);font-size:11px;}
+.text-rose{color:#f43f5e;}
+.text-amber{color:#f59e0b;}
+.text-green{color:#10b981;}
+.gap4{gap:4px;}
+.gap8{gap:8px;}
+.gap12{gap:12px;}
+.mb8{margin-bottom:8px;}
+.mb12{margin-bottom:12px;}
+.mb16{margin-bottom:16px;}
+.mb20{margin-bottom:20px;}
+.mt8{margin-top:8px;}
+.mt12{margin-top:12px;}
+.mt16{margin-top:16px;}
+.flex{display:flex;}
+.flex-1{flex:1;}
+.items-center{align-items:center;}
+.items-start{align-items:flex-start;}
+.justify-between{justify-content:space-between;}
+.wrap{flex-wrap:wrap;}
+.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.text-center{text-align:center;}
+.text-right{text-align:right;}
+.bold{font-weight:600;}
+.fs12{font-size:12px;}
+.fs13{font-size:13px;}
+.fs14{font-size:14px;}
+.fs24{font-size:24px;}
+.fs32{font-size:32px;}
+.fs48{font-size:48px;}
+.w100{width:100%;}
+.relative{position:relative;}
+.absolute{position:absolute;}
+.hidden{display:none;}
+.pointer{cursor:pointer;}
+.space-y>*+*{margin-top:10px;}
 </style>
 </head>
 <body>
@@ -34,243 +143,162 @@ body { background: #0f0e17; min-height: 100vh; color: #fffffe; }
 <div id="toasts"></div>
 
 <script>
-// ===== 数据 =====
-function save() { localStorage.setItem('zhanlan_data', JSON.stringify(data)); }
-let data = null; // 在 PRESET_EXHIBITS 定义后初始化
-
 // ===== 预置展览 =====
 const PRESET_EXHIBITS = [
-  { id:'e1', name:'梵高·星空之夜沉浸展', venue:'上海·西岸美术馆', city:'上海', type:'沉浸式', tags:['梵高','印象派','光影'], cover:'🌌', rating:0, ratingCount:0, startDate:'2026-01-01', endDate:'2026-06-30', desc:'全球巡回的梵高沉浸式艺术展，360°星空投影，仿佛走入画中世界。', userAdded:false },
-  { id:'e2', name:'故宫·千里江山特展', venue:'北京·故宫博物院', city:'北京', type:'博物馆', tags:['国宝','宋代','山水'], cover:'🏔️', rating:0, ratingCount:0, startDate:'2026-02-01', endDate:'2026-05-31', desc:'北宋王希孟《千里江山图》真迹特展，限量预约，一生必看。', userAdded:false },
-  { id:'e3', name:'草间弥生·无限镜屋', venue:'上海·龙美术馆', city:'上海', type:'当代艺术', tags:['草间弥生','装置','波点'], cover:'🔴', rating:0, ratingCount:0, startDate:'2026-03-01', endDate:'2026-07-31', desc:'无限延伸的镜面空间，草间弥生标志性波点装置，排队两小时值得。', userAdded:false },
-  { id:'e4', name:'自然之境·雨林生态展', venue:'广州·广东省博物馆', city:'广州', type:'自然科学', tags:['自然','生态','科普'], cover:'🌿', rating:0, ratingCount:0, startDate:'2026-01-15', endDate:'2026-08-15', desc:'真实热带雨林植物与多媒体的结合，沉浸式探索地球生态系统。', userAdded:false },
-  { id:'e5', name:'包豪斯百年设计回顾展', venue:'北京·UCCA尤伦斯', city:'北京', type:'设计艺术', tags:['包豪斯','设计史','现代主义'], cover:'⬜', rating:0, ratingCount:0, startDate:'2026-02-15', endDate:'2026-06-15', desc:'纵览百年包豪斯设计遗产，从家具到建筑，现代设计DNA的起源。', userAdded:false },
-  { id:'e6', name:'AI创作艺术节', venue:'成都·东郊记忆', city:'成都', type:'科技艺术', tags:['AI','数字艺术','互动'], cover:'🤖', rating:0, ratingCount:0, startDate:'2026-03-20', endDate:'2026-05-20', desc:'人工智能与艺术家共同创作的视觉盛宴，可与作品实时互动。', userAdded:false },
-  { id:'e7', name:'宇宙漫游·NASA太空摄影展', venue:'深圳·南山博物馆', city:'深圳', type:'摄影展', tags:['NASA','宇宙','摄影'], cover:'🚀', rating:0, ratingCount:0, startDate:'2026-01-20', endDate:'2026-07-20', desc:'NASA官方授权，数十张震撼宇宙真实影像，沉默之中令人泪目。', userAdded:false },
-  { id:'e8', name:'街头涂鸦·城市墙面艺术节', venue:'上海·M50创意园', city:'上海', type:'街头艺术', tags:['涂鸦','街头','当代'], cover:'🎨', rating:0, ratingCount:0, startDate:'2026-04-01', endDate:'2026-09-30', desc:'国际街头艺术家现场创作，整条街巷变成流动美术馆。', userAdded:false },
+  {id:'e1',name:'梵高·星空之夜沉浸展',venue:'上海·西岸美术馆',city:'上海',type:'沉浸式',cover:'🌌',desc:'全球巡回梵高沉浸式艺术展，360°星空投影，仿佛走入画中世界。',startDate:'2026-01-01',endDate:'2026-06-30',userAdded:false},
+  {id:'e2',name:'故宫·千里江山特展',venue:'北京·故宫博物院',city:'北京',type:'博物馆',cover:'🏔️',desc:'北宋王希孟《千里江山图》真迹特展，限量预约，一生必看。',startDate:'2026-02-01',endDate:'2026-05-31',userAdded:false},
+  {id:'e3',name:'草间弥生·无限镜屋',venue:'上海·龙美术馆',city:'上海',type:'当代艺术',cover:'🔴',desc:'无限延伸的镜面空间，草间弥生标志性波点装置，排队两小时值得。',startDate:'2026-03-01',endDate:'2026-07-31',userAdded:false},
+  {id:'e4',name:'自然之境·雨林生态展',venue:'广州·广东省博物馆',city:'广州',type:'自然科学',cover:'🌿',desc:'真实热带雨林植物与多媒体结合，沉浸式探索地球生态系统。',startDate:'2026-01-15',endDate:'2026-08-15',userAdded:false},
+  {id:'e5',name:'包豪斯百年设计回顾展',venue:'北京·UCCA尤伦斯',city:'北京',type:'设计艺术',cover:'⬜',desc:'纵览百年包豪斯设计遗产，现代设计DNA的起源。',startDate:'2026-02-15',endDate:'2026-06-15',userAdded:false},
+  {id:'e6',name:'AI创作艺术节',venue:'成都·东郊记忆',city:'成都',type:'科技艺术',cover:'🤖',desc:'人工智能与艺术家共同创作的视觉盛宴，可与作品实时互动。',startDate:'2026-03-20',endDate:'2026-05-20',userAdded:false},
+  {id:'e7',name:'宇宙漫游·NASA太空摄影展',venue:'深圳·南山博物馆',city:'深圳',type:'摄影展',cover:'🚀',desc:'NASA官方授权，数十张震撼宇宙真实影像，令人泪目。',startDate:'2026-01-20',endDate:'2026-07-20',userAdded:false},
+  {id:'e8',name:'街头涂鸦·城市墙面艺术节',venue:'上海·M50创意园',city:'上海',type:'街头艺术',cover:'🎨',desc:'国际街头艺术家现场创作，整条街巷变成流动美术馆。',startDate:'2026-04-01',endDate:'2026-09-30',userAdded:false},
 ];
 
-// ===== 展览类型 & 标签 =====
 const EXHIBIT_TYPES = ['沉浸式','博物馆','当代艺术','自然科学','设计艺术','科技艺术','摄影展','街头艺术','装置艺术','快闪展','艺术节','音乐现场','其他'];
 const QUICK_TAGS = ['值得二刷','哭了','人太多','性价比高','必须预约','带娃友好','网红打卡','适合独行','需要讲解','灯光绝了','内容深度','互动感强','高冷难懂','票价偏贵'];
-const TASTE_TYPES = [
-  { id:'classic', label:'古典美学', emoji:'🏛️', desc:'偏爱传统、历史、古典艺术' },
-  { id:'contemporary', label:'当代先锋', emoji:'🔺', desc:'热衷当代艺术与实验创作' },
-  { id:'immersive', label:'沉浸体验', emoji:'🌌', desc:'享受沉浸式感官冲击' },
-  { id:'nature', label:'自然探索', emoji:'🌿', desc:'钟情自然科学与生态' },
-  { id:'design', label:'设计迷', emoji:'⚡', desc:'关注设计、建筑与工业美学' },
-  { id:'street', label:'街头文化', emoji:'🎨', desc:'热爱街头艺术与城市美学' },
-  { id:'tech', label:'科技前沿', emoji:'🤖', desc:'追逐数字艺术与科技展' },
-  { id:'photo', label:'影像收藏', emoji:'📷', desc:'痴迷摄影、纪录片式展览' },
-];
-const TYPE_TO_TASTE = {
-  '博物馆': 'classic', '当代艺术': 'contemporary', '沉浸式': 'immersive',
-  '自然科学': 'nature', '设计艺术': 'design', '街头艺术': 'street',
-  '科技艺术': 'tech', '摄影展': 'photo', '装置艺术': 'contemporary',
-  '快闪展': 'immersive', '艺术节': 'contemporary', '音乐现场': 'street',
-};
-const STAMP_MAP = {
-  '沉浸式':'🌌','博物馆':'🏛️','当代艺术':'🔺','自然科学':'🌿','设计艺术':'⚡',
-  '科技艺术':'🤖','摄影展':'📷','街头艺术':'🎨','装置艺术':'🎭','快闪展':'⚡',
-  '艺术节':'🎪','音乐现场':'🎵','其他':'🎫',
-};
+const TASTE_MAP = {沉浸式:'immersive',博物馆:'classic',当代艺术:'contemporary',自然科学:'nature',设计艺术:'design',科技艺术:'tech',摄影展:'photo',街头艺术:'street',装置艺术:'contemporary',快闪展:'immersive',艺术节:'contemporary',音乐现场:'street'};
+const TASTES = {classic:{l:'古典美学',e:'🏛️'},contemporary:{l:'当代先锋',e:'🔺'},immersive:{l:'沉浸体验',e:'🌌'},nature:{l:'自然探索',e:'🌿'},design:{l:'设计迷',e:'⚡'},street:{l:'街头文化',e:'🎨'},tech:{l:'科技前沿',e:'🤖'},photo:{l:'影像控',e:'📷'}};
+const STAMP_MAP = {沉浸式:'🌌',博物馆:'🏛️',当代艺术:'🔺',自然科学:'🌿',设计艺术:'⚡',科技艺术:'🤖',摄影展:'📷',街头艺术:'🎨',装置艺术:'🎭',快闪展:'✨',艺术节:'🎪',音乐现场:'🎵',其他:'🎫'};
+
+// ===== 存储 =====
+function save(){localStorage.setItem('zl2_data',JSON.stringify(data));}
+function initData(){
+  return {
+    user:null,setupDone:false,tab:'discover',
+    exhibits:JSON.parse(JSON.stringify(PRESET_EXHIBITS)),
+    reviews:[],
+    passport:{checkins:[],stamps:[]}
+  };
+}
+let data;
+try{data=JSON.parse(localStorage.getItem('zl2_data')||'null')||initData();}
+catch(e){data=initData();}
 
 // ===== 工具 =====
-function showToast(msg, type='ok') {
-  const el = document.createElement('div');
-  el.className = 'toast';
-  el.style.background = type==='err' ? '#dc2626' : type==='warn' ? '#d97706' : '#059669';
-  el.textContent = msg;
-  document.getElementById('toasts').appendChild(el);
-  setTimeout(()=>el.remove(), 2500);
+function $(id){return document.getElementById(id);}
+function toast(msg,c='ok'){
+  const el=document.createElement('div');
+  el.className='toast';
+  el.style.background=c==='err'?'#dc2626':c==='warn'?'#d97706':'#059669';
+  el.textContent=msg;
+  $('toasts').appendChild(el);
+  setTimeout(()=>el.remove(),2500);
 }
-function closeModal() { document.getElementById('modals').innerHTML = ''; render(); }
-function getExhibit(id) { return data.exhibits.find(e=>e.id===id); }
-function getReviews(eid) { return data.reviews.filter(r=>r.exhibitId===eid); }
-function getAvgRating(eid) {
-  const rs = getReviews(eid).filter(r=>r.rating>0);
-  if (!rs.length) return 0;
-  return (rs.reduce((a,r)=>a+r.rating,0)/rs.length).toFixed(1);
-}
-function getCheckin(eid) { return data.passport.checkins.find(c=>c.exhibitId===eid); }
-function getTasteProfile() {
-  const counts = {};
-  data.passport.checkins.forEach(c => {
-    const ex = getExhibit(c.exhibitId);
-    if (!ex) return;
-    const taste = TYPE_TO_TASTE[ex.type] || 'contemporary';
-    counts[taste] = (counts[taste]||0) + 1;
-  });
-  return Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([id])=>TASTE_TYPES.find(t=>t.id===id)).filter(Boolean);
-}
-function formatDate(ts) {
-  const d = new Date(ts);
-  return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
-}
-function stars(n, size='text-base') {
-  return [1,2,3,4,5].map(i=>`<span class="${size} ${i<=n?'text-amber-400':'text-white/20'}">${i<=n?'★':'★'}</span>`).join('');
+function closeModal(){$('modals').innerHTML='';render();}
+function getEx(id){return data.exhibits.find(e=>e.id===id);}
+function getRevs(eid){return data.reviews.filter(r=>r.exhibitId===eid);}
+function avgRating(eid){const rs=getRevs(eid).filter(r=>r.rating>0);return rs.length?(rs.reduce((a,r)=>a+r.rating,0)/rs.length).toFixed(1):0;}
+function getCheckin(eid){return data.passport.checkins.find(c=>c.exhibitId===eid);}
+function fmtDate(ts){const d=new Date(ts);return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;}
+function starsHTML(n,sz=16){return[1,2,3,4,5].map(i=>`<span style="color:${i<=n?'#f59e0b':'rgba(255,255,255,0.18)'};font-size:${sz}px">★</span>`).join('');}
+function tasteProfile(){
+  const c={};
+  data.passport.checkins.forEach(ch=>{const ex=getEx(ch.exhibitId);if(!ex)return;const t=TASTE_MAP[ex.type]||'contemporary';c[t]=(c[t]||0)+1;});
+  return Object.entries(c).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([id,cnt])=>({id,...TASTES[id],cnt})).filter(x=>x.l);
 }
 
-// ===== 主渲染 =====
-function render() {
-  if (!data.setupDone) { renderSetup(); return; }
-  document.getElementById('app').innerHTML = `
-    ${renderNav()}
-    <div class="max-w-lg mx-auto px-4 pb-24 pt-4">
-      ${data.tab==='discover' ? renderDiscover() : ''}
-      ${data.tab==='passport' ? renderPassport() : ''}
-      ${data.tab==='add' ? renderAdd() : ''}
-      ${data.tab==='profile' ? renderProfile() : ''}
-    </div>`;
+// ===== 渲染主控 =====
+function render(){
+  if(!data.setupDone){renderSetup();return;}
+  $('app').innerHTML=`${renderNav()}<div id="page" class="fade"></div>`;
+  const page=$('page');
+  if(data.tab==='discover')page.innerHTML=renderDiscover();
+  else if(data.tab==='passport')page.innerHTML=renderPassport();
+  else if(data.tab==='add')page.innerHTML=renderAdd();
+  else if(data.tab==='profile')page.innerHTML=renderProfile();
+  bindEvents();
+}
+function setTab(t){data.tab=t;save();render();}
+
+// ===== 导航 =====
+function renderNav(){
+  const tabs=[{id:'discover',l:'发现',e:'🔍'},{id:'passport',l:'护照',e:'🎫'},{id:'add',l:'收录',e:'➕'},{id:'profile',l:'我的',e:'👤'}];
+  return `<nav><div class="nav-inner">${tabs.map(t=>`<button class="nav-btn ${data.tab===t.id?'active':''}" onclick="setTab('${t.id}')"><span>${t.e}</span><span>${t.l}</span></button>`).join('')}</div></nav>`;
 }
 
 // ===== 设置 =====
-function renderSetup() {
-  const u = data.user || { name:'', avatar:'🎫', city:'' };
-  document.getElementById('app').innerHTML = `
-  <div class="min-h-screen flex items-center justify-center p-4">
-    <div class="w-full max-w-sm fade-in">
-      <div class="text-center mb-8">
-        <div class="text-6xl mb-3">🎫</div>
-        <h1 class="text-3xl font-bold bg-gradient-to-r from-rose-400 to-amber-400 bg-clip-text text-transparent handwriting">逛展护照</h1>
-        <p class="text-white/40 mt-2 text-sm">记录你的每一次观展足迹</p>
+const AVATARS=['🎫','🎨','🏛️','📷','🌿','🔺','🤖','🌌','⭐','🎭','🦋','🎪','🌙','🎯'];
+function renderSetup(){
+  const av=data.user?.avatar||'🎫';
+  $('app').innerHTML=`
+  <div class="setup-wrap">
+    <div style="width:100%;max-width:360px;">
+      <div class="text-center mb20">
+        <div class="fs48 mb8">🎫</div>
+        <h1 style="background:linear-gradient(135deg,#f43f5e,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-size:28px;">逛展护照</h1>
+        <p class="muted fs13 mt8">记录你的每一次观展足迹</p>
       </div>
-      <div class="bg-white/5 border border-white/10 rounded-3xl p-6">
-        <h2 class="text-base font-medium mb-5 text-center text-white/80">办理你的专属护照</h2>
-        <input id="s-name" type="text" maxlength="12" placeholder="你的昵称"
-          value="${u.name}"
-          class="w-full bg-white/10 border border-white/10 rounded-2xl px-4 py-3 text-sm outline-none focus:border-rose-400 placeholder-white/20 mb-3">
-        <input id="s-city" type="text" maxlength="8" placeholder="所在城市（如：上海）"
-          value="${u.city}"
-          class="w-full bg-white/10 border border-white/10 rounded-2xl px-4 py-3 text-sm outline-none focus:border-rose-400 placeholder-white/20 mb-4">
-        <div class="mb-4">
-          <p class="text-xs text-white/40 mb-2">选一个头像</p>
-          <div class="grid grid-cols-7 gap-2">
-            ${['🎫','🎨','🏛️','📷','🌿','🔺','🤖','🌌','⭐','🎭','🦋','🎪','🌙','🎯'].map(e=>`
-            <button onclick="selectAvatar('${e}')"
-              class="text-xl p-1.5 rounded-xl transition-all ${u.avatar===e?'bg-rose-500/40 ring-1 ring-rose-400':'bg-white/5 hover:bg-white/15'}">${e}</button>`).join('')}
-          </div>
+      <div class="card" style="padding:20px;">
+        <h3 class="text-center mb16" style="color:rgba(255,255,255,0.8);">办理你的专属护照</h3>
+        <input type="text" id="sname" maxlength="12" placeholder="你的昵称" value="${data.user?.name||''}" style="margin-bottom:10px;">
+        <input type="text" id="scity" maxlength="8" placeholder="所在城市（如：上海）" value="${data.user?.city||''}" style="margin-bottom:16px;">
+        <p class="muted-sm mb8">选一个头像</p>
+        <div class="avatar-grid mb16">
+          ${AVATARS.map(e=>`<button class="avatar-btn${av===e?' sel':''}" onclick="pickAv('${e}')">${e}</button>`).join('')}
         </div>
-        <button onclick="finishSetup()"
-          class="w-full py-3 rounded-2xl bg-gradient-to-r from-rose-500 to-amber-500 font-medium text-sm hover:opacity-90">
-          领取我的护照 🎫
-        </button>
+        <button class="btn-primary" onclick="finishSetup()">领取我的护照 🎫</button>
       </div>
-      <p class="text-center text-white/20 text-xs mt-4">数据仅存本地，不上传</p>
+      <p class="text-center muted-sm mt8">数据仅存本地，不上传任何服务器</p>
     </div>
   </div>`;
 }
-window.selectAvatar = e => { if(!data.user) data.user={name:'',avatar:'🎫',city:''}; data.user.avatar=e; save(); renderSetup(); };
-window.finishSetup = () => {
-  const name = document.getElementById('s-name')?.value?.trim();
-  const city = document.getElementById('s-city')?.value?.trim();
-  if (!name) { showToast('给自己起个名字吧','err'); return; }
-  data.user = { name, city: city||'未知城市', avatar: data.user?.avatar||'🎫', joined: Date.now() };
-  data.setupDone = true;
-  save();
-  showToast('🎫 护照办好了！');
-  render();
+window.pickAv=e=>{if(!data.user)data.user={name:'',avatar:'🎫',city:''};data.user.avatar=e;save();renderSetup();};
+window.finishSetup=()=>{
+  const name=$('sname')?.value?.trim();
+  const city=$('scity')?.value?.trim();
+  if(!name){toast('给自己起个名字吧','err');return;}
+  data.user={name,city:city||'未知城市',avatar:data.user?.avatar||'🎫',joined:Date.now()};
+  data.setupDone=true;save();toast('🎫 护照办好了！');render();
 };
-
-// ===== 导航 =====
-function renderNav() {
-  const tabs = [
-    {id:'discover',label:'发现',emoji:'🔍'},
-    {id:'passport',label:'护照',emoji:'🎫'},
-    {id:'add',label:'收录',emoji:'➕'},
-    {id:'profile',label:'我的',emoji:'👤'},
-  ];
-  return `
-  <nav class="fixed bottom-0 left-0 right-0 bg-black/70 backdrop-blur border-t border-white/10 z-50">
-    <div class="flex max-w-lg mx-auto">
-      ${tabs.map(t=>`
-      <button onclick="setTab('${t.id}')"
-        class="flex-1 flex flex-col items-center py-3 transition-all ${data.tab===t.id?'text-rose-400':'text-white/30 hover:text-white/60'}">
-        <span class="text-xl">${t.emoji}</span>
-        <span class="text-xs mt-0.5">${t.label}</span>
-      </button>`).join('')}
-    </div>
-  </nav>`;
-}
-window.setTab = t => { data.tab=t; save(); render(); };
 
 // ===== 发现页 =====
-let _filter = { type:'', city:'', q:'' };
-function renderDiscover() {
-  const cities = [...new Set(data.exhibits.map(e=>e.city))];
-  let list = data.exhibits.filter(e => {
-    if (_filter.type && e.type!==_filter.type) return false;
-    if (_filter.city && e.city!==_filter.city) return false;
-    if (_filter.q && !e.name.includes(_filter.q) && !e.venue.includes(_filter.q)) return false;
+let _fType='',_fCity='',_fQ='';
+function renderDiscover(){
+  const cities=[...new Set(data.exhibits.map(e=>e.city))];
+  const list=data.exhibits.filter(e=>{
+    if(_fType&&e.type!==_fType)return false;
+    if(_fCity&&e.city!==_fCity)return false;
+    if(_fQ&&!e.name.includes(_fQ)&&!e.venue.includes(_fQ))return false;
     return true;
   });
   return `
-  <div class="fade-in">
-    <div class="flex items-center justify-between mb-4">
-      <h2 class="text-lg font-bold">发现展览</h2>
-      <span class="text-xs text-white/30">${data.exhibits.length} 个展览</span>
+  <div>
+    <div class="flex items-center justify-between mb16">
+      <h2>发现展览</h2>
+      <span class="muted fs12">${data.exhibits.length} 个展览</span>
     </div>
-
-    <!-- 搜索 -->
-    <div class="relative mb-3">
-      <input type="text" placeholder="搜索展览名称或场馆…" value="${_filter.q}"
-        oninput="_filter.q=this.value;renderDiscoverInPlace()"
-        class="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-2.5 text-sm outline-none focus:border-rose-400/50 placeholder-white/20 pr-10">
-      <span class="absolute right-3 top-2.5 text-white/20">🔍</span>
+    <div class="relative mb12">
+      <input type="text" id="search-q" placeholder="搜索展览或场馆…" value="${_fQ}" oninput="filterChange()">
     </div>
-
-    <!-- 筛选 -->
-    <div class="flex gap-2 mb-4 overflow-x-auto pb-1 scrollbar-hide">
-      <button onclick="_filter.city='';renderDiscoverInPlace()"
-        class="flex-shrink-0 text-xs px-3 py-1.5 rounded-full transition-all ${!_filter.city?'bg-rose-500 text-white':'bg-white/10 text-white/50'}">全部城市</button>
-      ${cities.map(c=>`
-      <button onclick="_filter.city='${c}';renderDiscoverInPlace()"
-        class="flex-shrink-0 text-xs px-3 py-1.5 rounded-full transition-all ${_filter.city===c?'bg-rose-500 text-white':'bg-white/10 text-white/50'}">${c}</button>`).join('')}
-    </div>
-    <div class="flex gap-2 mb-5 overflow-x-auto pb-1">
-      <button onclick="_filter.type='';renderDiscoverInPlace()"
-        class="flex-shrink-0 text-xs px-3 py-1.5 rounded-full transition-all ${!_filter.type?'bg-amber-500 text-white':'bg-white/10 text-white/50'}">全类型</button>
-      ${EXHIBIT_TYPES.slice(0,8).map(t=>`
-      <button onclick="_filter.type='${t}';renderDiscoverInPlace()"
-        class="flex-shrink-0 text-xs px-3 py-1.5 rounded-full transition-all ${_filter.type===t?'bg-amber-500 text-white':'bg-white/10 text-white/50'}">${t}</button>`).join('')}
-    </div>
-
-    <!-- 列表 -->
-    <div id="discover-list" class="space-y-3">
-      ${renderExhibitList(list)}
-    </div>
+    <div class="scroll-x mb8"><div class="flex-row">
+      <button class="btn-sm ${!_fCity?'active':''}" onclick="_fCity='';filterChange()">全部城市</button>
+      ${cities.map(c=>`<button class="btn-sm ${_fCity===c?'active':''}" onclick="_fCity='${c}';filterChange()">${c}</button>`).join('')}
+    </div></div>
+    <div class="scroll-x mb16"><div class="flex-row">
+      <button class="btn-sm ${!_fType?'active-amber':''}" onclick="_fType='';filterChange()">全类型</button>
+      ${EXHIBIT_TYPES.slice(0,8).map(t=>`<button class="btn-sm ${_fType===t?'active-amber':''}" onclick="_fType='${t}';filterChange()">${t}</button>`).join('')}
+    </div></div>
+    <div id="ex-list">${renderExList(list)}</div>
   </div>`;
 }
-window.renderDiscoverInPlace = () => {
-  let list = data.exhibits.filter(e => {
-    if (_filter.type && e.type!==_filter.type) return false;
-    if (_filter.city && e.city!==_filter.city) return false;
-    if (_filter.q && !e.name.includes(_filter.q) && !e.venue.includes(_filter.q)) return false;
-    return true;
-  });
-  const el = document.getElementById('discover-list');
-  if (el) el.innerHTML = renderExhibitList(list);
-};
-function renderExhibitList(list) {
-  if (!list.length) return `<div class="text-center py-12 text-white/30">没有找到符合条件的展览</div>`;
-  return list.map(e => {
-    const avg = getAvgRating(e.id);
-    const cnt = getReviews(e.id).length;
-    const checked = !!getCheckin(e.id);
-    return `
-    <div class="bg-white/5 border border-white/10 rounded-2xl p-4 cursor-pointer hover:bg-white/8 transition-all"
-      onclick="openExhibit('${e.id}')">
-      <div class="flex gap-3">
-        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-rose-900/60 to-amber-900/60 flex items-center justify-center text-3xl flex-shrink-0">${e.cover}</div>
-        <div class="flex-1 min-w-0">
-          <div class="flex items-start justify-between gap-2">
-            <div class="font-medium text-sm leading-tight truncate flex-1">${e.name}</div>
-            ${checked ? '<span class="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full flex-shrink-0">✓ 已逛</span>' : ''}
+window.filterChange=()=>{_fQ=$('search-q')?.value||'';const el=$('ex-list');if(el){const list=data.exhibits.filter(e=>{if(_fType&&e.type!==_fType)return false;if(_fCity&&e.city!==_fCity)return false;if(_fQ&&!e.name.includes(_fQ)&&!e.venue.includes(_fQ))return false;return true;});el.innerHTML=renderExList(list);}};
+function renderExList(list){
+  if(!list.length)return`<div class="text-center muted" style="padding:48px 0;">没有找到符合条件的展览</div>`;
+  return list.map(e=>{
+    const avg=avgRating(e.id),cnt=getRevs(e.id).length,chk=!!getCheckin(e.id);
+    return`<div class="exhibit-card" onclick="openEx('${e.id}')">
+      <div class="flex items-center gap12">
+        <div class="exhibit-icon">${e.cover}</div>
+        <div class="flex-1" style="min-width:0;">
+          <div class="flex items-center gap8 mb8">
+            <span class="bold fs14 truncate flex-1">${e.name}</span>
+            ${chk?'<span class="badge badge-green">✓已逛</span>':''}
           </div>
-          <div class="text-xs text-white/40 mt-1 truncate">${e.venue}</div>
-          <div class="flex items-center gap-3 mt-2">
-            <span class="text-xs bg-white/10 text-white/50 px-2 py-0.5 rounded-full">${e.type}</span>
-            ${avg>0 ? `<span class="text-xs text-amber-400">★ ${avg}</span><span class="text-xs text-white/30">(${cnt})</span>` : '<span class="text-xs text-white/20">暂无评分</span>'}
+          <div class="muted fs12 mb8 truncate">${e.venue}</div>
+          <div class="flex items-center gap8">
+            <span class="badge" style="background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.5);">${e.type}</span>
+            ${avg>0?`<span class="text-amber fs12">★ ${avg}</span><span class="muted-sm">(${cnt})</span>`:'<span class="muted-sm">暂无评分</span>'}
           </div>
         </div>
       </div>
@@ -279,541 +307,206 @@ function renderExhibitList(list) {
 }
 
 // ===== 展览详情 =====
-window.openExhibit = (id) => {
-  const e = getExhibit(id);
-  if (!e) return;
-  const reviews = getReviews(id);
-  const avg = getAvgRating(id);
-  const checked = getCheckin(id);
-  const allTags = {};
-  reviews.forEach(r => r.tags?.forEach(t => { allTags[t]=(allTags[t]||0)+1; }));
-  const topTags = Object.entries(allTags).sort((a,b)=>b[1]-a[1]).slice(0,6);
-  const allPhotos = reviews.flatMap(r=>r.photos||[]);
-
-  document.getElementById('modals').innerHTML = `
-  <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
-    <div class="modal-sheet w-full max-w-lg bg-[#1a1825] border-t border-white/10">
-      <!-- 头图 -->
-      <div class="bg-gradient-to-br from-rose-900/80 to-amber-900/80 p-6 text-center relative">
-        <button onclick="closeModal()" class="absolute top-4 right-4 text-white/40 hover:text-white text-xl">✕</button>
-        <div class="text-6xl mb-3">${e.cover}</div>
-        <h2 class="text-lg font-bold mb-1">${e.name}</h2>
-        <p class="text-sm text-white/60">${e.venue}</p>
-        <div class="flex items-center justify-center gap-2 mt-2">
-          <span class="text-xs bg-white/20 px-2 py-0.5 rounded-full">${e.type}</span>
-          <span class="text-xs text-white/40">${e.city}</span>
+window.openEx=id=>{
+  const e=getEx(id);if(!e)return;
+  const revs=getRevs(id),avg=avgRating(id),chk=getCheckin(id);
+  const allTags={};revs.forEach(r=>r.tags?.forEach(t=>{allTags[t]=(allTags[t]||0)+1;}));
+  const topTags=Object.entries(allTags).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const photos=revs.flatMap(r=>r.photos||[]);
+  $('modals').innerHTML=`
+  <div class="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="modal-box">
+      <div style="background:linear-gradient(135deg,rgba(159,18,57,0.7),rgba(146,64,14,0.7));padding:24px;text-align:center;position:relative;">
+        <button onclick="closeModal()" style="position:absolute;top:12px;right:16px;background:none;border:none;color:rgba(255,255,255,0.4);font-size:20px;cursor:pointer;">✕</button>
+        <div style="font-size:52px;margin-bottom:10px;">${e.cover}</div>
+        <h2 style="margin-bottom:4px;">${e.name}</h2>
+        <p class="muted fs13">${e.venue}</p>
+        <div class="flex items-center justify-center gap8 mt8">
+          <span class="badge" style="background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);">${e.type}</span>
+          <span class="muted fs12">${e.city}</span>
         </div>
-        ${avg>0 ? `
-        <div class="flex items-center justify-center gap-1 mt-3">
-          ${stars(Math.round(avg),'text-lg')}
-          <span class="text-amber-400 font-bold ml-1">${avg}</span>
-          <span class="text-white/40 text-xs">(${reviews.length}条评价)</span>
-        </div>` : '<div class="text-white/30 text-xs mt-3">暂无评分</div>'}
+        ${avg>0?`<div style="margin-top:10px;">${starsHTML(Math.round(avg),18)}<span class="text-amber bold" style="margin-left:6px;">${avg}</span><span class="muted-sm" style="margin-left:4px;">(${revs.length}条)</span></div>`:'<p class="muted-sm" style="margin-top:8px;">暂无评分</p>'}
       </div>
-
-      <div class="p-5 space-y-5">
-        <!-- 简介 -->
-        <p class="text-sm text-white/60 leading-relaxed">${e.desc}</p>
-
-        <!-- 热门标签 -->
-        ${topTags.length>0 ? `
-        <div>
-          <div class="text-xs text-white/30 mb-2">大家都说</div>
-          <div class="flex flex-wrap gap-2">
-            ${topTags.map(([t,n])=>`
-            <span class="tag-badge bg-white/10 text-white/60 border border-white/10">
-              ${t} <span class="text-white/30">×${n}</span>
-            </span>`).join('')}
-          </div>
-        </div>` : ''}
-
-        <!-- 照片墙 -->
-        ${allPhotos.length>0 ? `
-        <div>
-          <div class="text-xs text-white/30 mb-2">现场照片 (${allPhotos.length})</div>
-          <div class="photo-grid">
-            ${allPhotos.slice(0,9).map(p=>`<img src="${p}" class="photo-item" />`).join('')}
-          </div>
-        </div>` : ''}
-
-        <!-- 操作按钮 -->
-        <div class="flex gap-3">
-          <button onclick="openReviewModal('${e.id}')"
-            class="flex-1 py-3 rounded-2xl bg-gradient-to-r from-rose-500 to-amber-500 text-sm font-medium">
-            ${checked ? '再写一条评价 ✍️' : '我逛过这个展 ✍️'}
-          </button>
-          ${!checked ? `
-          <button onclick="quickCheckin('${e.id}')"
-            class="py-3 px-4 rounded-2xl bg-white/10 text-sm text-white/60 hover:bg-white/20">
-            仅打卡
-          </button>` : ''}
+      <div style="padding:20px;" class="space-y">
+        <p class="muted fs13" style="line-height:1.7;">${e.desc}</p>
+        ${topTags.length?`<div><p class="muted-sm mb8">大家都说</p><div class="flex wrap gap8">${topTags.map(([t,n])=>`<span class="tag">${t} <span style="color:rgba(255,255,255,0.25)">×${n}</span></span>`).join('')}</div></div>`:''}
+        ${photos.length?`<div><p class="muted-sm mb8">现场照片 (${photos.length})</p><div class="photo-grid">${photos.slice(0,9).map(p=>`<img src="${p}">`).join('')}</div></div>`:''}
+        <div class="flex gap8">
+          <button class="btn-primary" onclick="openReview('${e.id}')">${chk?'再写一条评价 ✍️':'我逛过这个展 ✍️'}</button>
+          ${!chk?`<button class="btn-ghost" onclick="doCheckin('${e.id}',true)">仅打卡</button>`:''}
         </div>
-
-        <!-- 评价列表 -->
-        ${reviews.length>0 ? `
-        <div>
-          <div class="text-sm font-medium mb-3 text-white/70">全部评价 (${reviews.length})</div>
-          <div class="space-y-4">
-            ${reviews.slice().reverse().map(r=>`
-            <div class="bg-white/5 rounded-2xl p-4">
-              <div class="flex items-center gap-2 mb-2">
-                <span class="text-xl">${r.userAvatar||'🎫'}</span>
-                <span class="text-sm font-medium">${r.userName}</span>
-                <span class="text-xs text-white/30 ml-auto">${formatDate(r.ts)}</span>
-              </div>
-              ${r.rating>0 ? `<div class="mb-2">${stars(r.rating,'text-sm')}</div>` : ''}
-              ${r.text ? `<p class="text-sm text-white/70 leading-relaxed mb-2">${r.text}</p>` : ''}
-              ${r.tags?.length ? `
-              <div class="flex flex-wrap gap-1 mb-2">
-                ${r.tags.map(t=>`<span class="tag-badge bg-rose-500/15 text-rose-300/80">${t}</span>`).join('')}
-              </div>` : ''}
-              ${r.photos?.length ? `
-              <div class="photo-grid mt-2">
-                ${r.photos.map(p=>`<img src="${p}" class="photo-item" />`).join('')}
-              </div>` : ''}
-            </div>`).join('')}
-          </div>
-        </div>` : `
-        <div class="text-center py-6 text-white/30 text-sm">还没有评价，来写第一条吧</div>`}
+        ${revs.length?`<div><p class="bold fs13 mb12" style="color:rgba(255,255,255,0.7);">全部评价 (${revs.length})</p><div class="space-y">${revs.slice().reverse().map(r=>`<div class="card"><div class="flex items-center gap8 mb8"><span style="font-size:20px;">${r.ua||'🎫'}</span><span class="bold fs13">${r.un}</span><span class="muted-sm" style="margin-left:auto;">${fmtDate(r.ts)}</span></div>${r.rating?`<div style="margin-bottom:6px;">${starsHTML(r.rating,13)}</div>`:''} ${r.text?`<p class="fs13" style="color:rgba(255,255,255,0.65);line-height:1.6;margin-bottom:6px;">${r.text}</p>`:''} ${r.tags?.length?`<div class="flex wrap gap4">${r.tags.map(t=>`<span class="badge badge-rose">${t}</span>`).join('')}</div>`:''} ${r.photos?.length?`<div class="photo-grid" style="margin-top:8px;">${r.photos.map(p=>`<img src="${p}">`).join('')}</div>`:''}</div>`).join('')}</div></div>`:`<p class="text-center muted fs13" style="padding:20px 0;">还没有评价，来写第一条吧</p>`}
       </div>
     </div>
   </div>`;
 };
 
-// ===== 写评价弹窗 =====
-let _reviewState = { rating:0, text:'', tags:[], photos:[] };
-window.openReviewModal = (eid) => {
-  const e = getExhibit(eid);
-  _reviewState = { rating:0, text:'', tags:[], photos:[] };
-  renderReviewModal(eid, e);
-};
-function renderReviewModal(eid, e) {
-  document.getElementById('modals').innerHTML = `
-  <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
-    <div class="modal-sheet w-full max-w-lg bg-[#1a1825] border-t border-white/10 p-5">
-      <div class="flex items-center justify-between mb-5">
-        <div>
-          <div class="font-medium text-sm">${e.name}</div>
-          <div class="text-xs text-white/40">${e.venue}</div>
-        </div>
-        <button onclick="closeModal()" class="text-white/30 hover:text-white">✕</button>
+// ===== 写评价 =====
+let _rv={rating:0,text:'',tags:[],photos:[]};
+window.openReview=eid=>{_rv={rating:0,text:'',tags:[],photos:[]};renderRevModal(eid);};
+function renderRevModal(eid){
+  const e=getEx(eid);
+  $('modals').innerHTML=`
+  <div class="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="modal-box" style="padding:20px;">
+      <div class="flex items-center justify-between mb16">
+        <div><div class="bold fs14">${e.name}</div><div class="muted fs12">${e.venue}</div></div>
+        <button onclick="closeModal()" style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:18px;cursor:pointer;">✕</button>
       </div>
-
-      <!-- 评分 -->
-      <div class="mb-5">
-        <div class="text-xs text-white/40 mb-2">综合评分</div>
-        <div class="star-rating flex gap-1">
-          ${[1,2,3,4,5].map(i=>`
-          <span onclick="setReviewRating(${i},'${eid}')" class="text-3xl ${_reviewState.rating>=i?'text-amber-400':'text-white/20'}">★</span>`).join('')}
-          <span class="text-sm text-white/40 self-center ml-2">${['','太差了','不推荐','还可以','推荐','强烈推荐'][_reviewState.rating]||''}</span>
-        </div>
+      <div class="mb16">
+        <p class="muted-sm mb8">综合评分</p>
+        <div class="flex gap4">${[1,2,3,4,5].map(i=>`<span onclick="setRv(${i},'${eid}')" style="font-size:32px;cursor:pointer;color:${_rv.rating>=i?'#f59e0b':'rgba(255,255,255,0.18)'};">★</span>`).join('')}<span class="muted fs12" style="align-self:center;margin-left:8px;">${['','太差了','不推荐','还可以','推荐','强烈推荐'][_rv.rating]||''}</span></div>
       </div>
-
-      <!-- 快捷标签 -->
-      <div class="mb-4">
-        <div class="text-xs text-white/40 mb-2">快速标签（可多选）</div>
-        <div class="flex flex-wrap gap-2">
-          ${QUICK_TAGS.map(t=>`
-          <button onclick="toggleReviewTag('${t}','${eid}')"
-            class="tag-badge border transition-all ${_reviewState.tags.includes(t)?'bg-rose-500/30 border-rose-400/50 text-rose-200':'bg-white/5 border-white/10 text-white/50'}">
-            ${t}
-          </button>`).join('')}
+      <div class="mb16">
+        <p class="muted-sm mb8">快捷标签（可多选）</p>
+        <div class="flex wrap gap8">${QUICK_TAGS.map(t=>`<span class="tag${_rv.tags.includes(t)?' selected':''}" onclick="toggleTag('${t}','${eid}')">${t}</span>`).join('')}</div>
+      </div>
+      <div class="mb16">
+        <p class="muted-sm mb8">说点什么（可选）</p>
+        <textarea id="rv-text" placeholder="写下你的观展感受……" rows="3" oninput="_rv.text=this.value">${_rv.text}</textarea>
+      </div>
+      <div class="mb16">
+        <p class="muted-sm mb8">上传现场照片（最多4张）</p>
+        <div class="flex wrap gap8" id="photo-prev">
+          ${_rv.photos.map((p,i)=>`<div style="position:relative;"><img src="${p}" style="width:64px;height:64px;object-fit:cover;border-radius:10px;"><button onclick="rmPhoto(${i},'${eid}')" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;background:#ef4444;border:none;border-radius:50%;color:#fff;font-size:10px;cursor:pointer;">✕</button></div>`).join('')}
+          ${_rv.photos.length<4?`<label style="width:64px;height:64px;border:2px dashed rgba(255,255,255,0.2);border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:24px;color:rgba(255,255,255,0.2);">+<input type="file" accept="image/*" multiple class="hidden" onchange="addPhotos(this,'${eid}')"></label>`:''}
         </div>
       </div>
-
-      <!-- 文字评价 -->
-      <div class="mb-4">
-        <div class="text-xs text-white/40 mb-2">说点什么（可选）</div>
-        <textarea id="review-text" placeholder="写下你的观展感受……"
-          oninput="_reviewState.text=this.value"
-          class="w-full bg-white/5 border border-white/10 rounded-2xl p-3 text-sm text-white/80 outline-none focus:border-rose-400/50 placeholder-white/20 resize-none h-24">${_reviewState.text}</textarea>
-      </div>
-
-      <!-- 上传照片 -->
-      <div class="mb-5">
-        <div class="text-xs text-white/40 mb-2">上传现场照片（最多4张）</div>
-        <div class="flex gap-2 flex-wrap" id="photo-preview">
-          ${_reviewState.photos.map((p,i)=>`
-          <div class="relative w-16 h-16">
-            <img src="${p}" class="w-16 h-16 object-cover rounded-xl" />
-            <button onclick="removePhoto(${i},'${eid}')" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center">✕</button>
-          </div>`).join('')}
-          ${_reviewState.photos.length < 4 ? `
-          <label for="review-photo" class="w-16 h-16 border-2 border-dashed border-white/20 rounded-xl flex items-center justify-center cursor-pointer hover:border-rose-400/50 text-2xl text-white/20">+
-            <input type="file" id="review-photo" accept="image/*" multiple class="hidden" onchange="addPhotos(this,'${eid}')">
-          </label>` : ''}
-        </div>
-      </div>
-
-      <button onclick="submitReview('${eid}')"
-        class="w-full py-3 rounded-2xl bg-gradient-to-r from-rose-500 to-amber-500 font-medium text-sm">
-        提交评价并打卡 🎫
-      </button>
+      <button class="btn-primary" onclick="submitRev('${eid}')">提交评价并打卡 🎫</button>
     </div>
   </div>`;
 }
-window.setReviewRating = (n, eid) => { _reviewState.rating=n; renderReviewModal(eid, getExhibit(eid)); };
-window.toggleReviewTag = (t, eid) => {
-  const idx = _reviewState.tags.indexOf(t);
-  if (idx>=0) _reviewState.tags.splice(idx,1); else _reviewState.tags.push(t);
-  renderReviewModal(eid, getExhibit(eid));
-};
-window.addPhotos = (input, eid) => {
-  const files = Array.from(input.files);
-  const remaining = 4 - _reviewState.photos.length;
-  files.slice(0, remaining).forEach(file => {
-    if (file.size > 5*1024*1024) { showToast('单张图片不超过5MB','warn'); return; }
-    const reader = new FileReader();
-    reader.onload = e => {
-      _reviewState.photos.push(e.target.result);
-      renderReviewModal(eid, getExhibit(eid));
-    };
-    reader.readAsDataURL(file);
+window.setRv=(n,eid)=>{_rv.rating=n;renderRevModal(eid);};
+window.toggleTag=(t,eid)=>{const i=_rv.tags.indexOf(t);i>=0?_rv.tags.splice(i,1):_rv.tags.push(t);renderRevModal(eid);};
+window.addPhotos=(inp,eid)=>{
+  Array.from(inp.files).slice(0,4-_rv.photos.length).forEach(f=>{
+    if(f.size>5*1024*1024){toast('单张不超过5MB','warn');return;}
+    const r=new FileReader();r.onload=e=>{_rv.photos.push(e.target.result);renderRevModal(eid);};r.readAsDataURL(f);
   });
 };
-window.removePhoto = (i, eid) => { _reviewState.photos.splice(i,1); renderReviewModal(eid, getExhibit(eid)); };
-window.submitReview = (eid) => {
-  const text = document.getElementById('review-text')?.value?.trim() || _reviewState.text;
-  if (!_reviewState.rating && !text && !_reviewState.tags.length) {
-    showToast('至少留下评分或标签吧','warn'); return;
+window.rmPhoto=(i,eid)=>{_rv.photos.splice(i,1);renderRevModal(eid);};
+window.submitRev=eid=>{
+  const text=$('rv-text')?.value?.trim()||_rv.text;
+  if(!_rv.rating&&!text&&!_rv.tags.length){toast('至少留下评分或标签','warn');return;}
+  data.reviews.push({id:'r'+Date.now(),exhibitId:eid,un:data.user.name,ua:data.user.avatar,rating:_rv.rating,text,tags:[..._rv.tags],photos:[..._rv.photos],ts:Date.now()});
+  doCheckin(eid,false);save();toast('🎫 评价提交，护照盖章！');closeModal();
+};
+window.doCheckin=(eid,closeAfter)=>{
+  if(!getCheckin(eid)){
+    const ex=getEx(eid);
+    const stamp=STAMP_MAP[ex?.type]||'🎫';
+    data.passport.checkins.push({exhibitId:eid,ts:Date.now()});
+    if(!data.passport.stamps.includes(stamp))data.passport.stamps.push(stamp);
+    save();
   }
-  const review = {
-    id: 'r-'+Date.now(),
-    exhibitId: eid,
-    userName: data.user.name,
-    userAvatar: data.user.avatar,
-    rating: _reviewState.rating,
-    text,
-    tags: [..._reviewState.tags],
-    photos: [..._reviewState.photos],
-    ts: Date.now(),
-  };
-  data.reviews.push(review);
-  doCheckinExhibit(eid);
-  save();
-  showToast('🎫 评价已提交，护照盖章！');
-  closeModal();
+  if(closeAfter){toast('✓ 打卡成功！');closeModal();}
 };
-window.quickCheckin = (eid) => {
-  doCheckinExhibit(eid);
-  save();
-  showToast('✓ 打卡成功！');
-  closeModal();
-};
-function doCheckinExhibit(eid) {
-  if (getCheckin(eid)) return;
-  const ex = getExhibit(eid);
-  const stamp = STAMP_MAP[ex?.type] || '🎫';
-  data.passport.checkins.push({ exhibitId:eid, ts:Date.now() });
-  if (!data.passport.stamps.includes(stamp)) data.passport.stamps.push(stamp);
-}
 
 // ===== 护照页 =====
-function renderPassport() {
-  const checkins = data.passport.checkins;
-  const taste = getTasteProfile();
-  const totalTypes = [...new Set(checkins.map(c=>getExhibit(c.exhibitId)?.type).filter(Boolean))];
-
-  return `
-  <div class="fade-in">
-    <!-- 护照封面 -->
-    <div class="passport-page rounded-3xl p-6 mb-4 text-center shadow-2xl relative overflow-hidden">
-      <div class="absolute inset-0 opacity-5" style="background:repeating-linear-gradient(45deg,#8b4513 0,#8b4513 1px,transparent 0,transparent 50%);background-size:20px 20px;"></div>
-      <div class="relative">
-        <div class="text-4xl mb-2">🎫</div>
-        <h2 class="handwriting text-2xl text-amber-900 font-bold">逛展护照</h2>
-        <p class="text-amber-800/60 text-xs mb-4">EXHIBITION PASSPORT</p>
-        <div class="text-5xl mb-2">${data.user.avatar}</div>
-        <div class="text-amber-900 font-bold text-lg">${data.user.name}</div>
-        <div class="text-amber-800/60 text-xs">${data.user.city} · 加入于 ${formatDate(data.user.joined)}</div>
-        <div class="mt-4 flex justify-center gap-6 text-center">
-          <div><div class="text-2xl font-bold text-amber-900">${checkins.length}</div><div class="text-xs text-amber-800/60">逛展记录</div></div>
-          <div><div class="text-2xl font-bold text-amber-900">${data.reviews.length}</div><div class="text-xs text-amber-800/60">发表评价</div></div>
-          <div><div class="text-2xl font-bold text-amber-900">${totalTypes.length}</div><div class="text-xs text-amber-800/60">展览类型</div></div>
+function renderPassport(){
+  const cks=data.passport.checkins,taste=tasteProfile();
+  const types=[...new Set(cks.map(c=>getEx(c.exhibitId)?.type).filter(Boolean))];
+  return`<div>
+    <div class="passport-cover mb16">
+      <div style="position:relative;">
+        <div style="font-size:36px;margin-bottom:6px;">🎫</div>
+        <div style="font-size:22px;font-weight:700;color:#5c3d0a;font-family:serif;margin-bottom:2px;">逛展护照</div>
+        <div style="font-size:10px;color:#8b6334;letter-spacing:2px;margin-bottom:12px;">EXHIBITION PASSPORT</div>
+        <div style="font-size:44px;margin-bottom:6px;">${data.user.avatar}</div>
+        <div style="font-size:18px;font-weight:700;color:#5c3d0a;">${data.user.name}</div>
+        <div style="font-size:11px;color:#8b6334;margin-bottom:16px;">${data.user.city} · 加入于 ${fmtDate(data.user.joined)}</div>
+        <div class="flex" style="justify-content:center;gap:32px;text-align:center;">
+          <div><div style="font-size:22px;font-weight:700;color:#5c3d0a;">${cks.length}</div><div style="font-size:11px;color:#8b6334;">逛展记录</div></div>
+          <div><div style="font-size:22px;font-weight:700;color:#5c3d0a;">${data.reviews.length}</div><div style="font-size:11px;color:#8b6334;">发表评价</div></div>
+          <div><div style="font-size:22px;font-weight:700;color:#5c3d0a;">${types.length}</div><div style="font-size:11px;color:#8b6334;">展览类型</div></div>
         </div>
       </div>
     </div>
-
-    <!-- 审美画像 -->
-    ${taste.length>0 ? `
-    <div class="bg-white/5 border border-white/10 rounded-2xl p-4 mb-4">
-      <div class="text-sm font-medium mb-3 text-white/70">✨ 你的审美画像</div>
-      <div class="flex gap-3">
-        ${taste.map((t,i)=>`
-        <div class="flex-1 bg-gradient-to-b from-white/10 to-white/5 rounded-2xl p-3 text-center ${i===0?'ring-1 ring-rose-400/50':''}">
-          <div class="text-2xl mb-1">${t.emoji}</div>
-          <div class="text-xs font-medium ${i===0?'text-rose-300':'text-white/60'}">${t.label}</div>
-          ${i===0?'<div class="text-xs text-white/30 mt-0.5">主要偏好</div>':''}
-        </div>`).join('')}
-      </div>
-      <p class="text-xs text-white/30 mt-3">${taste[0]?.desc||''}</p>
-    </div>` : ''}
-
-    <!-- 邮戳收集 -->
-    ${data.passport.stamps.length>0 ? `
-    <div class="bg-white/5 border border-white/10 rounded-2xl p-4 mb-4">
-      <div class="text-sm font-medium mb-3 text-white/70">🔖 收集的章 (${data.passport.stamps.length})</div>
-      <div class="flex flex-wrap gap-3">
-        ${data.passport.stamps.map(s=>`
-        <div class="stamp w-12 h-12 border-rose-400/50 text-rose-400 bg-rose-400/10 stamp-anim">${s}</div>`).join('')}
-      </div>
-    </div>` : ''}
-
-    <!-- 观展记录时间线 -->
-    <div class="bg-white/5 border border-white/10 rounded-2xl p-4">
-      <div class="text-sm font-medium mb-4 text-white/70">📅 观展足迹</div>
-      ${checkins.length===0 ? `
-      <div class="text-center py-8 text-white/30 text-sm">
-        <div class="text-3xl mb-2">📭</div>
-        还没有观展记录，去发现页打卡第一个展吧！
-      </div>` : `
-      <div class="space-y-3">
-        ${checkins.slice().reverse().map(c=>{
-          const ex = getExhibit(c.exhibitId);
-          if (!ex) return '';
-          const rev = data.reviews.find(r=>r.exhibitId===c.exhibitId);
-          return `
-          <div class="flex gap-3 cursor-pointer hover:opacity-80" onclick="openExhibit('${c.exhibitId}')">
-            <div class="flex flex-col items-center">
-              <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-rose-600/50 to-amber-600/50 flex items-center justify-center text-lg">${ex.cover}</div>
-              <div class="w-0.5 bg-white/10 flex-1 mt-1"></div>
-            </div>
-            <div class="flex-1 pb-3">
-              <div class="text-sm font-medium">${ex.name}</div>
-              <div class="text-xs text-white/40">${ex.venue} · ${formatDate(c.ts)}</div>
-              ${rev?.rating ? `<div class="mt-1">${stars(rev.rating,'text-xs')}</div>` : ''}
-              ${rev?.text ? `<p class="text-xs text-white/50 mt-1 line-clamp-2">${rev.text}</p>` : ''}
-            </div>
-          </div>`;
-        }).join('')}
-      </div>`}
+    ${taste.length?`<div class="card mb16"><p class="bold fs13 mb12" style="color:rgba(255,255,255,0.7);">✨ 审美画像</p><div class="flex gap8 mb12">${taste.map((t,i)=>`<div class="flex-1 text-center" style="background:rgba(255,255,255,0.06);border-radius:14px;padding:12px;${i===0?'border:1px solid rgba(244,63,94,0.4);':''}"><div style="font-size:24px;margin-bottom:4px;">${t.e}</div><div class="bold fs12" style="color:${i===0?'#fda4af':'rgba(255,255,255,0.6)'};">${t.l}</div>${i===0?'<div class="muted-sm">主要偏好</div>':''}</div>`).join('')}</div><p class="muted fs12">${taste[0]?.l}偏好者，通常钟情深度体验与视觉冲击。</p></div>`:''}
+    ${data.passport.stamps.length?`<div class="card mb16"><p class="bold fs13 mb12" style="color:rgba(255,255,255,0.7);">🔖 收集的章 (${data.passport.stamps.length})</p><div class="flex wrap gap8">${data.passport.stamps.map(s=>`<div class="stamp">${s}</div>`).join('')}</div></div>`:''}
+    <div class="card"><p class="bold fs13 mb16" style="color:rgba(255,255,255,0.7);">📅 观展足迹</p>
+    ${!cks.length?`<div class="text-center muted" style="padding:32px 0;"><div style="font-size:32px;margin-bottom:8px;">📭</div>还没有观展记录，去打卡第一个展吧！</div>`:`<div class="space-y">${cks.slice().reverse().map(c=>{const ex=getEx(c.exhibitId);if(!ex)return'';const rv=data.reviews.find(r=>r.exhibitId===c.exhibitId);return`<div class="timeline-item pointer" onclick="openEx('${c.exhibitId}')"><div class="timeline-dot">${ex.cover}</div><div class="flex-1"><div class="bold fs14">${ex.name}</div><div class="muted fs12">${ex.venue} · ${fmtDate(c.ts)}</div>${rv?.rating?`<div style="margin-top:4px;">${starsHTML(rv.rating,12)}</div>`:''} ${rv?.text?`<p class="fs12 muted" style="margin-top:2px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">${rv.text}</p>`:''}</div></div>`;}).join('')}</div>`}
     </div>
   </div>`;
 }
 
-// ===== 收录展览页 =====
-let _addState = { name:'', venue:'', city:'', type:'', cover:'🎫', desc:'', startDate:'', endDate:'' };
-function renderAdd() {
-  return `
-  <div class="fade-in">
-    <h2 class="text-lg font-bold mb-1">收录新展览</h2>
-    <p class="text-white/40 text-sm mb-5">把你发现的好展览分享给大家</p>
-
-    <div class="space-y-3">
-      <div>
-        <div class="text-xs text-white/40 mb-1.5">展览名称 *</div>
-        <input type="text" placeholder="完整展览名称" maxlength="40"
-          value="${_addState.name}" oninput="_addState.name=this.value"
-          class="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm outline-none focus:border-rose-400/50 placeholder-white/20">
+// ===== 收录页 =====
+let _add={name:'',venue:'',city:'',type:'',cover:'🎫',desc:'',startDate:'',endDate:''};
+function renderAdd(){
+  return`<div>
+    <h2 class="mb8">收录新展览</h2>
+    <p class="muted fs13 mb20">把你发现的好展览分享给大家</p>
+    <div class="space-y">
+      <div><p class="muted-sm mb8">展览名称 *</p><input type="text" id="a-name" placeholder="完整展览名称" maxlength="40" value="${_add.name}" oninput="_add.name=this.value"></div>
+      <div><p class="muted-sm mb8">场馆 *</p><input type="text" id="a-venue" placeholder="如：上海·龙美术馆" maxlength="30" value="${_add.venue}" oninput="_add.venue=this.value"></div>
+      <div class="flex gap8">
+        <div class="flex-1"><p class="muted-sm mb8">城市 *</p><input type="text" id="a-city" placeholder="城市" maxlength="8" value="${_add.city}" oninput="_add.city=this.value"></div>
+        <div style="width:100px;"><p class="muted-sm mb8">封面</p><input type="text" id="a-cover" placeholder="emoji" maxlength="4" value="${_add.cover}" oninput="_add.cover=this.value" style="text-align:center;"></div>
       </div>
-      <div>
-        <div class="text-xs text-white/40 mb-1.5">场馆 *</div>
-        <input type="text" placeholder="如：上海·龙美术馆" maxlength="30"
-          value="${_addState.venue}" oninput="_addState.venue=this.value"
-          class="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm outline-none focus:border-rose-400/50 placeholder-white/20">
+      <div><p class="muted-sm mb8">展览类型 *</p><div class="flex wrap gap8">${EXHIBIT_TYPES.map(t=>`<span class="tag${_add.type===t?' selected':''}" onclick="_add.type='${t}';reRenderAdd()">${t}</span>`).join('')}</div></div>
+      <div><p class="muted-sm mb8">简介</p><textarea id="a-desc" placeholder="描述一下这个展览…" rows="3" oninput="_add.desc=this.value">${_add.desc}</textarea></div>
+      <div class="flex gap8">
+        <div class="flex-1"><p class="muted-sm mb8">开始日期</p><input type="date" value="${_add.startDate}" onchange="_add.startDate=this.value"></div>
+        <div class="flex-1"><p class="muted-sm mb8">结束日期</p><input type="date" value="${_add.endDate}" onchange="_add.endDate=this.value"></div>
       </div>
-      <div class="grid grid-cols-2 gap-3">
-        <div>
-          <div class="text-xs text-white/40 mb-1.5">城市 *</div>
-          <input type="text" placeholder="城市" maxlength="8"
-            value="${_addState.city}" oninput="_addState.city=this.value"
-            class="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm outline-none focus:border-rose-400/50 placeholder-white/20">
-        </div>
-        <div>
-          <div class="text-xs text-white/40 mb-1.5">封面图标</div>
-          <input type="text" placeholder="一个 emoji" maxlength="4"
-            value="${_addState.cover}" oninput="_addState.cover=this.value"
-            class="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-center outline-none focus:border-rose-400/50 placeholder-white/20">
-        </div>
-      </div>
-      <div>
-        <div class="text-xs text-white/40 mb-1.5">展览类型 *</div>
-        <div class="flex flex-wrap gap-2">
-          ${EXHIBIT_TYPES.map(t=>`
-          <button onclick="_addState.type='${t}';renderAddInPlace()"
-            class="text-xs px-3 py-1.5 rounded-full border transition-all ${_addState.type===t?'bg-rose-500/30 border-rose-400/50 text-rose-200':'bg-white/5 border-white/10 text-white/50'}">
-            ${t}
-          </button>`).join('')}
-        </div>
-      </div>
-      <div>
-        <div class="text-xs text-white/40 mb-1.5">简介</div>
-        <textarea id="add-desc" placeholder="描述一下这个展览……" maxlength="200"
-          oninput="_addState.desc=this.value"
-          class="w-full bg-white/5 border border-white/10 rounded-2xl p-3 text-sm text-white/80 outline-none focus:border-rose-400/50 placeholder-white/20 resize-none h-20">${_addState.desc}</textarea>
-      </div>
-      <div class="grid grid-cols-2 gap-3">
-        <div>
-          <div class="text-xs text-white/40 mb-1.5">开始日期</div>
-          <input type="date" value="${_addState.startDate}" onchange="_addState.startDate=this.value"
-            class="w-full bg-white/5 border border-white/10 rounded-2xl px-3 py-3 text-sm outline-none focus:border-rose-400/50 text-white/70">
-        </div>
-        <div>
-          <div class="text-xs text-white/40 mb-1.5">结束日期</div>
-          <input type="date" value="${_addState.endDate}" onchange="_addState.endDate=this.value"
-            class="w-full bg-white/5 border border-white/10 rounded-2xl px-3 py-3 text-sm outline-none focus:border-rose-400/50 text-white/70">
-        </div>
-      </div>
-      <button onclick="submitNewExhibit()"
-        class="w-full py-3 rounded-2xl bg-gradient-to-r from-rose-500 to-amber-500 font-medium text-sm mt-2">
-        收录这个展览 ✓
-      </button>
+      <button class="btn-primary" onclick="submitAdd()">收录这个展览 ✓</button>
     </div>
   </div>`;
 }
-window.renderAddInPlace = () => { document.getElementById('app').querySelector('.fade-in').outerHTML = renderAdd(); render(); };
-window.submitNewExhibit = () => {
-  const desc = document.getElementById('add-desc')?.value?.trim() || _addState.desc;
-  const s = { ..._addState, desc };
-  if (!s.name || !s.venue || !s.city || !s.type) { showToast('名称/场馆/城市/类型必填','warn'); return; }
-  const ex = {
-    id: 'u-'+Date.now(),
-    name: s.name, venue: s.venue, city: s.city, type: s.type,
-    cover: s.cover||'🎫', desc: s.desc||'暂无简介',
-    startDate: s.startDate, endDate: s.endDate,
-    tags: [], rating: 0, ratingCount: 0, userAdded: true,
-  };
-  data.exhibits.push(ex);
-  _addState = { name:'', venue:'', city:'', type:'', cover:'🎫', desc:'', startDate:'', endDate:'' };
-  save();
-  showToast('🎉 展览已收录！');
-  data.tab = 'discover';
-  render();
+window.reRenderAdd=()=>{$('page').innerHTML=renderAdd();};
+window.submitAdd=()=>{
+  _add.name=$('a-name')?.value?.trim()||_add.name;
+  _add.venue=$('a-venue')?.value?.trim()||_add.venue;
+  _add.city=$('a-city')?.value?.trim()||_add.city;
+  _add.desc=$('a-desc')?.value?.trim()||_add.desc;
+  _add.cover=$('a-cover')?.value?.trim()||_add.cover;
+  if(!_add.name||!_add.venue||!_add.city||!_add.type){toast('名称/场馆/城市/类型必填','warn');return;}
+  data.exhibits.push({id:'u'+Date.now(),name:_add.name,venue:_add.venue,city:_add.city,type:_add.type,cover:_add.cover||'🎫',desc:_add.desc||'暂无简介',startDate:_add.startDate,endDate:_add.endDate,userAdded:true});
+  _add={name:'',venue:'',city:'',type:'',cover:'🎫',desc:'',startDate:'',endDate:''};
+  save();toast('🎉 展览已收录！');setTab('discover');
 };
 
 // ===== 我的页 =====
-function renderProfile() {
-  const myReviews = data.reviews.filter(r=>r.userName===data.user.name);
-  const taste = getTasteProfile();
-  return `
-  <div class="fade-in space-y-4">
-    <!-- 用户卡 -->
-    <div class="bg-gradient-to-br from-rose-900/40 to-amber-900/40 border border-white/10 rounded-3xl p-5">
-      <div class="flex items-center gap-4 mb-4">
-        <div class="text-5xl">${data.user.avatar}</div>
-        <div>
-          <div class="font-bold text-lg">${data.user.name}</div>
-          <div class="text-sm text-white/50">${data.user.city}</div>
-        </div>
-        <button onclick="openEditProfile()" class="ml-auto text-xs text-white/30 hover:text-white border border-white/10 px-3 py-1.5 rounded-full">编辑</button>
+function renderProfile(){
+  const myRevs=data.reviews.filter(r=>r.un===data.user.name),taste=tasteProfile();
+  return`<div class="space-y">
+    <div class="card-hero" style="border-radius:18px;padding:20px;">
+      <div class="flex items-center gap12 mb16">
+        <div style="font-size:44px;">${data.user.avatar}</div>
+        <div class="flex-1"><div class="bold" style="font-size:18px;">${data.user.name}</div><div class="muted fs13">${data.user.city}</div></div>
+        <button class="btn-ghost fs12" onclick="openEditProfile()">编辑</button>
       </div>
-      <div class="flex gap-4 text-center">
-        <div class="flex-1"><div class="text-xl font-bold text-rose-300">${data.passport.checkins.length}</div><div class="text-xs text-white/40">逛展</div></div>
-        <div class="flex-1"><div class="text-xl font-bold text-amber-300">${myReviews.length}</div><div class="text-xs text-white/40">评价</div></div>
-        <div class="flex-1"><div class="text-xl font-bold text-emerald-300">${data.passport.stamps.length}</div><div class="text-xs text-white/40">印章</div></div>
+      <div class="flex" style="text-align:center;justify-content:space-around;">
+        <div><div style="font-size:22px;font-weight:700;color:#fda4af;">${data.passport.checkins.length}</div><div class="muted fs12">逛展</div></div>
+        <div><div style="font-size:22px;font-weight:700;color:#fcd34d;">${myRevs.length}</div><div class="muted fs12">评价</div></div>
+        <div><div style="font-size:22px;font-weight:700;color:#6ee7b7;">${data.passport.stamps.length}</div><div class="muted fs12">印章</div></div>
       </div>
     </div>
-
-    <!-- 审美画像详情 -->
-    ${taste.length>0 ? `
-    <div class="bg-white/5 border border-white/10 rounded-2xl p-4">
-      <div class="text-sm font-medium mb-3 text-white/70">✨ 审美画像</div>
-      <div class="space-y-2">
-        ${taste.map((t,i)=>{
-          const cnt = data.passport.checkins.filter(c=>TYPE_TO_TASTE[getExhibit(c.exhibitId)?.type]===t.id).length;
-          const pct = Math.round(cnt/data.passport.checkins.length*100);
-          return `
-          <div class="flex items-center gap-3">
-            <span class="text-xl w-8">${t.emoji}</span>
-            <div class="flex-1">
-              <div class="flex justify-between text-xs mb-1">
-                <span class="text-white/70">${t.label}</span>
-                <span class="text-white/30">${pct}%</span>
-              </div>
-              <div class="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                <div class="h-full bg-gradient-to-r from-rose-500 to-amber-500 rounded-full" style="width:${pct}%"></div>
-              </div>
-            </div>
-          </div>`;
-        }).join('')}
-      </div>
-    </div>` : `
-    <div class="bg-white/5 border border-white/10 rounded-2xl p-5 text-center text-white/30 text-sm">
-      <div class="text-3xl mb-2">🎭</div>
-      逛几个展后，这里会生成你的专属审美画像
-    </div>`}
-
-    <!-- 我的评价 -->
-    <div class="bg-white/5 border border-white/10 rounded-2xl p-4">
-      <div class="text-sm font-medium mb-3 text-white/70">我写的评价 (${myReviews.length})</div>
-      ${myReviews.length===0 ? `<div class="text-center py-4 text-white/30 text-sm">还没有写过评价</div>` : `
-      <div class="space-y-3">
-        ${myReviews.slice().reverse().slice(0,5).map(r=>{
-          const ex = getExhibit(r.exhibitId);
-          return `
-          <div class="flex gap-3 cursor-pointer hover:opacity-80" onclick="openExhibit('${r.exhibitId}')">
-            <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-xl flex-shrink-0">${ex?.cover||'🎫'}</div>
-            <div class="flex-1 min-w-0">
-              <div class="text-sm truncate">${ex?.name||'未知展览'}</div>
-              ${r.rating ? `<div>${stars(r.rating,'text-xs')}</div>` : ''}
-              ${r.text ? `<p class="text-xs text-white/40 truncate mt-0.5">${r.text}</p>` : ''}
-            </div>
-          </div>`;
-        }).join('')}
-      </div>`}
-    </div>
-
-    <!-- 重置 -->
-    <button onclick="if(confirm('确定要清空所有数据吗？'))resetData()"
-      class="w-full py-3 rounded-2xl bg-white/5 text-white/30 text-sm border border-white/10 hover:bg-red-500/10 hover:text-red-400 hover:border-red-400/20 transition-all">
-      清空数据重新开始
-    </button>
+    ${taste.length?`<div class="card"><p class="bold fs13 mb12" style="color:rgba(255,255,255,0.7);">✨ 审美画像</p><div class="space-y">${taste.map(t=>{const cnt=data.passport.checkins.filter(c=>TASTE_MAP[getEx(c.exhibitId)?.type]===t.id).length;const pct=Math.round(cnt/data.passport.checkins.length*100);return`<div class="flex items-center gap12"><span style="font-size:20px;width:28px;">${t.e}</span><div class="flex-1"><div class="flex justify-between fs12 mb8"><span style="color:rgba(255,255,255,0.7);">${t.l}</span><span class="muted">${pct}%</span></div><div class="progress-bar"><div class="progress-fill" style="width:${pct}%;"></div></div></div></div>`;}).join('')}</div></div>`:`<div class="card text-center muted" style="padding:24px;"><div style="font-size:32px;margin-bottom:8px;">🎭</div><div class="fs13">逛几个展后，这里会生成你的专属审美画像</div></div>`}
+    <div class="card"><p class="bold fs13 mb12" style="color:rgba(255,255,255,0.7);">我写的评价 (${myRevs.length})</p>${myRevs.length?`<div class="space-y">${myRevs.slice().reverse().slice(0,5).map(r=>{const ex=getEx(r.exhibitId);return`<div class="flex gap12 pointer" onclick="openEx('${r.exhibitId}')"><div style="width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">${ex?.cover||'🎫'}</div><div class="flex-1" style="min-width:0;"><div class="fs14 truncate">${ex?.name||'未知展览'}</div>${r.rating?`<div>${starsHTML(r.rating,12)}</div>`:''} ${r.text?`<p class="fs12 muted truncate">${r.text}</p>`:''}</div></div>`;}).join('')}</div>`:`<p class="text-center muted fs13" style="padding:16px 0;">还没有写过评价</p>`}</div>
+    <button onclick="if(confirm('确定清空所有数据？'))resetAll()" style="width:100%;padding:14px;border-radius:14px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.25);font-size:13px;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.12)';this.style.color='#f87171';" onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.color='rgba(255,255,255,0.25)';">清空数据重新开始</button>
   </div>`;
 }
-
-window.openEditProfile = () => {
-  document.getElementById('modals').innerHTML = `
-  <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
-    <div class="modal-sheet w-full max-w-lg bg-[#1a1825] border-t border-white/10 p-5">
-      <div class="flex justify-between items-center mb-5">
-        <div class="font-medium">编辑资料</div>
-        <button onclick="closeModal()" class="text-white/30 hover:text-white">✕</button>
-      </div>
-      <input id="edit-name" type="text" maxlength="12" placeholder="昵称" value="${data.user.name}"
-        class="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm outline-none focus:border-rose-400/50 placeholder-white/20 mb-3">
-      <input id="edit-city" type="text" maxlength="8" placeholder="城市" value="${data.user.city}"
-        class="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm outline-none focus:border-rose-400/50 placeholder-white/20 mb-4">
-      <div class="grid grid-cols-7 gap-2 mb-5">
-        ${['🎫','🎨','🏛️','📷','🌿','🔺','🤖','🌌','⭐','🎭','🦋','🎪','🌙','🎯'].map(e=>`
-        <button onclick="data.user.avatar='${e}';save();closeModal();render()"
-          class="text-xl p-2 rounded-xl ${data.user.avatar===e?'bg-rose-500/40 ring-1 ring-rose-400':'bg-white/5 hover:bg-white/15'}">${e}</button>`).join('')}
-      </div>
-      <button onclick="saveProfile()" class="w-full py-3 rounded-2xl bg-gradient-to-r from-rose-500 to-amber-500 font-medium text-sm">保存</button>
+window.openEditProfile=()=>{
+  $('modals').innerHTML=`
+  <div class="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="modal-box" style="padding:20px;">
+      <div class="flex justify-between items-center mb16"><div class="bold">编辑资料</div><button onclick="closeModal()" style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:18px;cursor:pointer;">✕</button></div>
+      <input type="text" id="e-name" maxlength="12" placeholder="昵称" value="${data.user.name}" style="margin-bottom:10px;">
+      <input type="text" id="e-city" maxlength="8" placeholder="城市" value="${data.user.city}" style="margin-bottom:16px;">
+      <div class="avatar-grid mb16">${AVATARS.map(e=>`<button class="avatar-btn${data.user.avatar===e?' sel':''}" onclick="data.user.avatar='${e}';save();closeModal();render();">${e}</button>`).join('')}</div>
+      <button class="btn-primary" onclick="saveProfile()">保存</button>
     </div>
   </div>`;
 };
-window.saveProfile = () => {
-  const name = document.getElementById('edit-name')?.value?.trim();
-  const city = document.getElementById('edit-city')?.value?.trim();
-  if (!name) { showToast('名字不能为空','err'); return; }
-  data.user.name = name;
-  data.user.city = city || data.user.city;
-  save();
-  showToast('已保存');
-  closeModal();
+window.saveProfile=()=>{
+  const name=$('e-name')?.value?.trim();
+  if(!name){toast('名字不能为空','err');return;}
+  data.user.name=name;data.user.city=$('e-city')?.value?.trim()||data.user.city;save();toast('已保存');closeModal();
 };
-window.resetData = () => {
-  localStorage.removeItem('zhanlan_data');
-  data = defaultData();
-  render();
-};
+window.resetAll=()=>{localStorage.removeItem('zl2_data');data=initData();render();};
+function bindEvents(){}
 
-// ===== 初始化 =====
-function loadData() {
-  try { return JSON.parse(localStorage.getItem('zhanlan_data')||'null') || defaultData(); }
-  catch { return defaultData(); }
-}
-function defaultData() {
-  return {
-    user: null,
-    exhibits: JSON.parse(JSON.stringify(PRESET_EXHIBITS)),
-    reviews: [],
-    passport: { checkins: [], stamps: [] },
-    tab: 'discover',
-    setupDone: false,
-  };
-}
-data = loadData();
 render();
 </script>
 </body>
