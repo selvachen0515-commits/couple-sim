@@ -87,7 +87,7 @@ function getDefaultData() {
       form: Math.floor(Math.random() * 10),
       water: 0,
       fertilizer: 0,
-      fertilizerCharges: 0, // 可用施肥次数，由打卡解锁
+      fertilizerCharges: 0,
       totalPoints: 0,
       lastWatered: null,
       name: '',
@@ -99,48 +99,45 @@ function getDefaultData() {
   };
 }
 
-// ========== 施肥规则 ==========
-// 每种类型打卡累计次数达到阈值，奖励施肥机会
-const FERTILIZER_RULES = [
-  { type: 'exercise',      threshold: 3,  reward: 1, desc: '运动打卡满3次' },
-  { type: 'exercise',      threshold: 7,  reward: 1, desc: '运动打卡满7次' },
-  { type: 'study',         threshold: 3,  reward: 1, desc: '学习打卡满3次' },
-  { type: 'study',         threshold: 7,  reward: 1, desc: '学习打卡满7次' },
-  { type: 'family',        threshold: 2,  reward: 1, desc: '陪伴家人满2次' },
-  { type: 'digital_detox', threshold: 3,  reward: 2, desc: '防沉迷打卡满3次（双倍奖励！）' },
-  { type: 'sleep',         threshold: 5,  reward: 1, desc: '规律作息满5次' },
-  { type: 'creative',      threshold: 3,  reward: 1, desc: '创意输出满3次' },
-  // 混合奖励：任意累计打卡次数
-  { type: 'any',           threshold: 10, reward: 1, desc: '任意打卡累计满10次' },
-  { type: 'any',           threshold: 30, reward: 2, desc: '任意打卡累计满30次' },
-  { type: 'any',           threshold: 60, reward: 3, desc: '任意打卡累计满60次' },
-];
+// ========== 打卡每日限制 & 施肥规则 ==========
+// 每种打卡类型每天的上限次数、以及每次打卡奖励的施肥机会
+const CHECKIN_DAILY_RULES = {
+  // type: { dailyLimit: 每日打卡上限, fertPerCheckin: 每次打卡给几次施肥机会 }
+  exercise:      { dailyLimit: 3, fertPerCheckin: 1 }, // 运动：每日最多3次，每次+1施肥
+  study:         { dailyLimit: 3, fertPerCheckin: 1 }, // 学习：每日最多3次，每次+1施肥
+  family:        { dailyLimit: 2, fertPerCheckin: 1 }, // 陪伴：每日最多2次，每次+1施肥
+  digital_detox: { dailyLimit: 2, fertPerCheckin: 2 }, // 防沉迷：每日最多2次，每次+2施肥（珍贵！）
+  sleep:         { dailyLimit: 1, fertPerCheckin: 1 }, // 早睡：每日最多1次，每次+1施肥
+  creative:      { dailyLimit: 2, fertPerCheckin: 1 }, // 创意：每日最多2次，每次+1施肥
+};
+// 每日施肥总上限
+const DAILY_FERTILIZE_LIMIT = 5;
 
-function calcFertilizerCharges() {
-  // 重新计算应得的施肥次数（累计）
-  let total = 0;
-  FERTILIZER_RULES.forEach(rule => {
-    if (rule.type === 'any') {
-      const count = data.checkins.length;
-      if (count >= rule.threshold) total += rule.reward;
-    } else {
-      const count = data.checkins.filter(c => c.type === rule.type).length;
-      if (count >= rule.threshold) total += rule.reward;
-    }
-  });
-  return total;
+function getTodayCheckinCount(type) {
+  return data.checkins.filter(c => c.type === type && isToday(c.timestamp)).length;
+}
+function getTodayFertilizeCount() {
+  return (data.plant._fertToday && isToday(data.plant._fertTodayTs))
+    ? data.plant._fertToday : 0;
 }
 
 function getNextFertilizerHint() {
-  // 找到最近快达成的目标
-  for (const rule of FERTILIZER_RULES) {
-    let count = rule.type === 'any' ? data.checkins.length : data.checkins.filter(c=>c.type===rule.type).length;
-    if (count < rule.threshold) {
-      const remaining = rule.threshold - count;
-      return `再${rule.type==='any'?'打卡':'做「'+CHECKIN_TYPES.find(x=>x.id===rule.type)?.label+'」'}${remaining}次，可获得${rule.reward}次施肥机会`;
+  const todayFert = getTodayFertilizeCount();
+  if (todayFert >= DAILY_FERTILIZE_LIMIT) return `今日施肥已达上限（${DAILY_FERTILIZE_LIMIT}次），明天再来`;
+  if (data.plant.fertilizerCharges > 0) return `还有 ${data.plant.fertilizerCharges} 次施肥机会，快去薯园用掉！`;
+  // 推荐最容易解锁的打卡
+  const hints = Object.entries(CHECKIN_DAILY_RULES).map(([type, rule]) => {
+    const todayCount = getTodayCheckinCount(type);
+    const remaining = rule.dailyLimit - todayCount;
+    if (remaining > 0) {
+      const label = CHECKIN_TYPES.find(x=>x.id===type)?.label || type;
+      return { label, remaining, fert: rule.fertPerCheckin };
     }
-  }
-  return '所有施肥奖励已解锁！';
+    return null;
+  }).filter(Boolean);
+  if (hints.length === 0) return '今日打卡已满，明天继续加油！';
+  const best = hints.sort((a,b) => b.fert - a.fert)[0];
+  return `去「${best.label}」打卡，每次可获得 ${best.fert} 次施肥机会`;
 }
 function saveData() { localStorage.setItem('shugong_data', JSON.stringify(data)); }
 
@@ -324,6 +321,52 @@ function getUpcomingFestivals() {
     }
   });
   return results.sort((a, b) => a.days - b.days).slice(0, 2);
+}
+
+// ========== 每日名言 ==========
+const DAILY_QUOTES = [
+  { text: '你所浪费的今天，是昨天死去的人奢望的明天。', author: '马克·吐温' },
+  { text: '我们来不及认真地年轻，只好认真地老去。', author: '张爱玲' },
+  { text: '每一个不曾起舞的日子，都是对生命的辜负。', author: '尼采' },
+  { text: '愿你出走半生，归来仍是少年。', author: '网络' },
+  { text: '生如夏花之绚烂，死如秋叶之静美。', author: '泰戈尔' },
+  { text: '我只是想证明，平凡的生活里也有值得被记录的光。', author: '无名' },
+  { text: '后来，我总算学会了如何去爱，可惜你早已远去，消失在人海。', author: '《后来》' },
+  { text: '你见过凌晨四点的洛杉矶吗？我见过每一天。', author: '科比·布莱恩特' },
+  { text: '人生没有彩排，每天都是现场直播。', author: '网络' },
+  { text: '岁月不饶人，我亦未曾饶过岁月。', author: '张爱玲' },
+  { text: '总是在等一个合适的时机，才发现最好的时机已经悄悄走掉了。', author: '网络' },
+  { text: '你好，明天的你。今天的我正在努力着。', author: '无名' },
+  { text: '如果记忆是一罐忘情水，我情愿把它藏进时光里，留给未来的我。', author: '无名' },
+  { text: '你曾经相信的那些事，现在还相信吗？', author: '无名' },
+  { text: '我慢慢地、慢慢地了解到，所谓父女母子一场，只不过意味着，你和他的缘分就是今生今世不断地在目送他的背影渐行渐远。', author: '龙应台' },
+  { text: '时间会告诉你，认真爱过的人，不会后悔。', author: '网络' },
+  { text: '青春是一道明媚的忧伤。', author: '郭敬明' },
+  { text: '你不是一个人在战斗，但你必须先站起来。', author: '网络' },
+  { text: '做一个有趣的人，比做一个正确的人更难。', author: '网络' },
+  { text: '我们都是第一次活，不必太慌张。', author: '网络' },
+  { text: '写信给未来的你——因为那个人值得被珍视。', author: '薯宫' },
+  { text: '种一棵树最好的时间是十年前，其次是现在。', author: '中国谚语' },
+  { text: '你走，我不送你。你来，无论多大风雨，我要去接你。', author: '汪曾祺' },
+  { text: '一个人至少拥有一个梦想，有一个理由去坚强。', author: '三毛' },
+  { text: '也许你无法改变风向，但你可以调整风帆。', author: '网络' },
+  { text: '成年人的崩溃，总是在某个无人知晓的瞬间悄悄发生。', author: '网络' },
+  { text: '你很年轻，你会变好的。', author: '网络' },
+  { text: '那时候，天总是很蓝，日子总过得太慢。', author: '《童年》' },
+  { text: '长大以后，发现唯一的愿望，就是回到从前。', author: '网络' },
+  { text: '不要因为走了太远，忘记了当初为什么出发。', author: '纪伯伦' },
+];
+
+function renderDailyQuote() {
+  // 用日期作为种子，保证每天同一句
+  const dayIndex = Math.floor(Date.now() / 86400000) % DAILY_QUOTES.length;
+  const q = DAILY_QUOTES[dayIndex];
+  return `
+  <div class="bg-white/5 border border-white/10 rounded-2xl p-5 mx-2 text-left">
+    <div class="text-xs text-white/30 mb-3">· 今日一言 ·</div>
+    <div class="handwriting text-base text-white/80 leading-relaxed mb-3">"${q.text}"</div>
+    <div class="text-xs text-white/30 text-right">—— ${q.author}</div>
+  </div>`;
 }
 
 // ========== 检查到期信件 ==========
@@ -767,11 +810,12 @@ function renderMailbox() {
     </div>` : ''}
 
     ${data.letters.length === 0 ? `
-    <div class="text-center py-16">
+    <div class="text-center py-10">
       <div class="text-5xl mb-4">📭</div>
-      <div class="text-white/40">信箱空空如也</div>
-      <button onclick="setTab('write')" class="mt-4 text-sm text-purple-400 hover:text-purple-300">写第一封信 →</button>
-    </div>` : ''}
+      <div class="text-white/40 mb-6">信箱空空如也</div>
+      ${renderDailyQuote()}
+      <button onclick="setTab('write')" class="mt-6 text-sm text-purple-400 hover:text-purple-300">写第一封信 →</button>
+    </div>` : arrived.length === 0 && opened.length === 0 ? renderDailyQuote() : ''}
   </div>`;
 }
 
@@ -904,24 +948,34 @@ function renderCheckin() {
 
     <div class="space-y-3">
       ${CHECKIN_TYPES.map(ct => {
+        const rule = CHECKIN_DAILY_RULES[ct.id];
         const todayCount = todayCheckins.filter(c=>c.type===ct.id).length;
+        const limit = rule?.dailyLimit || 99;
+        const isFull = todayCount >= limit;
+        const fertHint = rule ? `打卡1次 → 🌿+${rule.fertPerCheckin}` : '';
         return `
-        <div class="bg-white/5 border border-white/10 rounded-2xl p-4">
+        <div class="bg-white/5 border ${isFull?'border-white/5 opacity-60':'border-white/10'} rounded-2xl p-4">
           <div class="flex items-center gap-3 mb-3">
             <div class="text-2xl">${ct.emoji}</div>
             <div class="flex-1">
               <div class="font-medium text-sm">${ct.label}</div>
-              <div class="text-xs text-white/40">${ct.desc} · +${ct.points}分</div>
+              <div class="text-xs text-white/40">${ct.desc} · +${ct.points}分 · ${fertHint}</div>
             </div>
-            ${todayCount > 0 ? `<span class="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full">今日×${todayCount}</span>` : ''}
+            <div class="text-right flex-shrink-0">
+              <span class="text-xs ${isFull?'bg-white/10 text-white/30':'bg-green-500/20 text-green-400'} px-2 py-1 rounded-full">
+                ${todayCount}/${limit}
+              </span>
+            </div>
           </div>
           <div class="flex flex-wrap gap-2">
             ${ct.items.map(item => `
             <button onclick="doCheckin('${ct.id}','${item}',${ct.points},event)"
-              class="text-xs bg-white/10 hover:bg-purple-500/30 border border-white/10 hover:border-purple-400/40 rounded-full px-3 py-1.5 transition-all">
+              ${isFull ? 'disabled' : ''}
+              class="text-xs ${isFull?'bg-white/5 text-white/20 cursor-not-allowed':'bg-white/10 hover:bg-purple-500/30 hover:border-purple-400/40'} border border-white/10 rounded-full px-3 py-1.5 transition-all">
               ${item}
             </button>`).join('')}
           </div>
+          ${isFull ? '<div class="text-xs text-white/30 mt-2 text-center">今日已完成，明天继续 ✓</div>' : ''}
         </div>`;
       }).join('')}
     </div>
@@ -1073,35 +1127,47 @@ window.fertilizePlant = (e) => {
     showToast('没有施肥机会了，去打卡解锁吧！', 'error');
     return;
   }
+  const todayFert = getTodayFertilizeCount();
+  if (todayFert >= DAILY_FERTILIZE_LIMIT) {
+    showToast(`今日施肥已达上限 ${DAILY_FERTILIZE_LIMIT} 次，明天再来～`, 'error');
+    return;
+  }
   data.plant.fertilizerCharges -= 1;
+  // 记录今日施肥次数
+  data.plant._fertToday = todayFert + 1;
+  data.plant._fertTodayTs = Date.now();
   data.plant.totalPoints += 5;
   data.plant.stage = getStage(data.plant.totalPoints);
   checkUnlock();
   saveData();
   spawnParticles('🌿', e.clientX, e.clientY);
-  showToast(`🌿 施肥成功！+5分（剩余 ${data.plant.fertilizerCharges} 次）`);
+  showToast(`🌿 施肥成功！+5分（剩余 ${data.plant.fertilizerCharges} 次，今日已用 ${data.plant._fertToday}/${DAILY_FERTILIZE_LIMIT}）`);
   render();
 };
 
 window.doCheckin = (type, item, points, e) => {
+  const rule = CHECKIN_DAILY_RULES[type];
+  const todayCount = getTodayCheckinCount(type);
+
+  // 检查每日上限
+  if (rule && todayCount >= rule.dailyLimit) {
+    showToast(`「${CHECKIN_TYPES.find(x=>x.id===type)?.label}」今日已达上限（${rule.dailyLimit}次）`, 'error');
+    return;
+  }
+
   const checkin = { id:'c-'+Date.now(), type, item, points, timestamp: Date.now() };
   data.checkins.push(checkin);
   data.plant.totalPoints += points;
   data.plant.stage = getStage(data.plant.totalPoints);
-  // 重新计算施肥次数（已用过的不退还，只补充差值）
-  const earned = calcFertilizerCharges();
-  const used = (data.plant._fertilizerEarned || 0) - data.plant.fertilizerCharges;
-  const newCharges = Math.max(0, earned - Math.max(0, used));
-  if (newCharges > data.plant.fertilizerCharges) {
-    const gained = newCharges - data.plant.fertilizerCharges;
-    data.plant.fertilizerCharges = newCharges;
-    setTimeout(() => showToast(`🌿 解锁 ${gained} 次施肥机会！`), 600);
-  }
-  data.plant._fertilizerEarned = earned;
+
+  // 施肥机会：每次打卡直接获得
+  const fertGained = rule ? rule.fertPerCheckin : 1;
+  data.plant.fertilizerCharges = (data.plant.fertilizerCharges || 0) + fertGained;
+
   checkUnlock();
   saveData();
   spawnParticles('⭐', e.clientX, e.clientY, 4);
-  showToast(`${CHECKIN_TYPES.find(x=>x.id===type)?.emoji} ${item} · +${points}分！`);
+  showToast(`${CHECKIN_TYPES.find(x=>x.id===type)?.emoji} ${item} · +${points}分 · 🌿+${fertGained}次施肥机会！`);
   render();
 };
 
