@@ -68,7 +68,7 @@ export default function ChatPage() {
       if (!res.ok) throw new Error('API 请求失败')
       const data = await res.json()
       addPartnerMessage(userMsg.id, data)
-    } catch (err) {
+    } catch {
       addPartnerMessage(userMsg.id, {
         message: '（网络好像有点问题，请稍后重试）',
         emotionState: '状态未知',
@@ -89,7 +89,7 @@ export default function ChatPage() {
   const toggleEmotion = (id: string) => {
     setExpandedEmotions(prev => {
       const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
+      if (next.has(id)) { next.delete(id) } else { next.add(id) }
       return next
     })
   }
