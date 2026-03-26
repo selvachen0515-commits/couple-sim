@@ -822,22 +822,30 @@ function renderMailbox() {
 function renderLetterCard(l, isArrived, isOpened=false) {
   const lt = LETTER_TYPES.find(x=>x.id===l.type) || LETTER_TYPES[4];
   const days = daysUntil(l.deliverAt);
+  const isPending = !isArrived && !isOpened;
+
   return `
   <div class="envelope bg-white/5 border ${isArrived?'border-rose-400/40':'border-white/10'} rounded-2xl p-4"
-    onclick="openLetter('${l.id}')">
+    onclick="${isPending ? '' : `openLetter('${l.id}')`}" ${isPending ? 'style="cursor:default"' : ''}>
     <div class="flex items-start gap-3">
-      <div class="w-10 h-10 rounded-xl bg-gradient-to-br ${lt.color} flex items-center justify-center text-xl flex-shrink-0">${lt.emoji}</div>
+      <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0
+        ${isPending ? 'bg-white/5' : `bg-gradient-to-br ${lt.color}`}">
+        ${isPending ? '🔒' : lt.emoji}
+      </div>
       <div class="flex-1 min-w-0">
-        <div class="font-medium truncate">${l.title || '无标题'}</div>
-        <div class="text-xs text-white/40 mt-0.5">
-          ${isArrived ? `<span class="text-rose-300">已到达 · ${formatDate(l.deliverAt)}</span>` :
-            isOpened ? `已读 · ${formatDate(l.deliverAt)}` :
-            `${days} 天后到达 · ${formatDate(l.deliverAt)}`}
-        </div>
-        ${!isOpened && !isArrived ? `
-        <div class="mt-2 h-1 bg-white/10 rounded-full overflow-hidden">
-          <div class="h-full bg-purple-500/60 rounded-full" style="width:${Math.max(5, 100 - days/3.65)}%"></div>
-        </div>` : ''}
+        ${isPending ? `
+          <div class="font-medium text-white/25 italic">未知来信</div>
+          <div class="text-xs text-white/20 mt-0.5">${days} 天后方可开启</div>
+          <div class="mt-2 h-1 bg-white/5 rounded-full overflow-hidden">
+            <div class="h-full bg-white/10 rounded-full" style="width:${Math.max(3, 100 - days/3.65)}%"></div>
+          </div>
+        ` : `
+          <div class="font-medium truncate">${l.title || '无标题'}</div>
+          <div class="text-xs text-white/40 mt-0.5">
+            ${isArrived ? `<span class="text-rose-300">已到达 · ${formatDate(l.deliverAt)}</span>`
+                        : `已读 · ${formatDate(l.deliverAt)}`}
+          </div>
+        `}
       </div>
       ${isArrived ? '<div class="w-2 h-2 bg-rose-400 rounded-full flex-shrink-0 mt-1"></div>' : ''}
     </div>
