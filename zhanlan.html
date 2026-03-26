@@ -6,55 +6,87 @@
 <title>逛展护照 🎫</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-body{background:#0f0e17;color:#fffffe;font-family:'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;min-height:100vh;}
+body{
+  color:#f0eee8;
+  font-family:'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
+  min-height:100vh;
+  background-color:#0d1b3e;
+  background-image:
+    radial-gradient(ellipse 80% 60% at 20% 10%, rgba(26,54,120,0.9) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 80%, rgba(18,42,90,0.8) 0%, transparent 55%),
+    radial-gradient(ellipse 40% 40% at 60% 20%, rgba(58,90,180,0.5) 0%, transparent 45%),
+    radial-gradient(ellipse 30% 30% at 30% 70%, rgba(180,130,30,0.25) 0%, transparent 40%),
+    radial-gradient(ellipse 20% 20% at 70% 50%, rgba(200,160,40,0.2) 0%, transparent 35%);
+}
+/* 星空漩涡背景粒子 */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    radial-gradient(1px 1px at 15% 25%, rgba(255,220,100,0.8) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 35% 15%, rgba(255,240,180,0.6) 0%, transparent 100%),
+    radial-gradient(1px 1px at 55% 35%, rgba(200,220,255,0.7) 0%, transparent 100%),
+    radial-gradient(2px 2px at 75% 18%, rgba(255,230,120,0.9) 0%, transparent 100%),
+    radial-gradient(1px 1px at 88% 42%, rgba(180,200,255,0.5) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 10% 60%, rgba(255,210,80,0.6) 0%, transparent 100%),
+    radial-gradient(1px 1px at 45% 55%, rgba(220,230,255,0.4) 0%, transparent 100%),
+    radial-gradient(2px 2px at 65% 70%, rgba(255,200,60,0.5) 0%, transparent 100%),
+    radial-gradient(1px 1px at 25% 80%, rgba(180,210,255,0.6) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 82% 75%, rgba(255,225,100,0.7) 0%, transparent 100%),
+    radial-gradient(1px 1px at 50% 88%, rgba(200,215,255,0.5) 0%, transparent 100%),
+    radial-gradient(1px 1px at 92% 20%, rgba(255,215,80,0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 5% 45%, rgba(180,205,255,0.5) 0%, transparent 100%),
+    radial-gradient(2px 2px at 40% 90%, rgba(255,200,50,0.6) 0%, transparent 100%),
+    radial-gradient(1px 1px at 70% 8%, rgba(220,235,255,0.5) 0%, transparent 100%);
+}
+#app{position:relative;z-index:1;}
 input,textarea,button{font-family:inherit;}
 
 /* 布局 */
 #app{max-width:480px;margin:0 auto;padding:16px 16px 80px;}
-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(10,9,20,0.92);border-top:1px solid rgba(255,255,255,0.1);z-index:50;}
+nav{position:fixed;bottom:0;left:0;right:0;background:rgba(8,18,55,0.94);backdrop-filter:blur(12px);border-top:1px solid rgba(100,130,220,0.15);z-index:50;}
 .nav-inner{max-width:480px;margin:0 auto;display:flex;}
-.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 0;background:none;border:none;color:rgba(255,255,255,0.35);cursor:pointer;font-size:12px;gap:3px;transition:color 0.2s;}
-.nav-btn.active{color:#f43f5e;}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 0;background:none;border:none;color:rgba(200,210,255,0.35);cursor:pointer;font-size:12px;gap:3px;transition:color 0.2s;}
+.nav-btn.active{color:#e8c84a;}
 .nav-btn span:first-child{font-size:20px;}
 
 /* 卡片 */
-.card{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:18px;padding:16px;}
-.card-hero{background:linear-gradient(135deg,rgba(159,18,57,0.5),rgba(146,64,14,0.5));border:1px solid rgba(255,255,255,0.1);border-radius:18px;padding:20px;text-align:center;}
+.card{background:rgba(15,30,80,0.55);border:1px solid rgba(100,130,220,0.18);border-radius:18px;padding:16px;backdrop-filter:blur(8px);}
+.card-hero{background:linear-gradient(135deg,rgba(30,60,140,0.6),rgba(20,40,100,0.6));border:1px solid rgba(100,130,220,0.2);border-radius:18px;padding:20px;text-align:center;}
 
 /* 输入 */
-input[type=text],input[type=date],textarea{width:100%;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:12px 16px;color:#fffffe;font-size:14px;outline:none;transition:border-color 0.2s;}
-input:focus,textarea:focus{border-color:rgba(244,63,94,0.6);}
-input::placeholder,textarea::placeholder{color:rgba(255,255,255,0.2);}
+input[type=text],input[type=date],textarea{width:100%;background:rgba(15,30,80,0.5);border:1px solid rgba(100,130,220,0.2);border-radius:14px;padding:12px 16px;color:#e8e6f0;font-size:14px;outline:none;transition:border-color 0.2s;}
+input:focus,textarea:focus{border-color:rgba(232,200,74,0.5);}
+input::placeholder,textarea::placeholder{color:rgba(180,195,255,0.25);}
 textarea{resize:none;}
 
 /* 按钮 */
-.btn-primary{width:100%;padding:14px;border-radius:14px;border:none;background:linear-gradient(135deg,#f43f5e,#f59e0b);color:#fff;font-size:14px;font-weight:600;cursor:pointer;transition:opacity 0.2s;}
+.btn-primary{width:100%;padding:14px;border-radius:14px;border:none;background:linear-gradient(135deg,#2855b8,#e8c84a);color:#fff;font-size:14px;font-weight:600;cursor:pointer;transition:opacity 0.2s;}
 .btn-primary:hover{opacity:0.88;}
-.btn-ghost{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:10px 16px;color:rgba(255,255,255,0.6);font-size:13px;cursor:pointer;transition:background 0.2s;}
-.btn-ghost:hover{background:rgba(255,255,255,0.14);}
-.btn-sm{padding:6px 14px;border-radius:20px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.55);font-size:12px;cursor:pointer;transition:all 0.15s;}
-.btn-sm.active{background:rgba(244,63,94,0.3);border-color:rgba(244,63,94,0.5);color:#fda4af;}
-.btn-sm.active-amber{background:rgba(245,158,11,0.3);border-color:rgba(245,158,11,0.5);color:#fcd34d;}
+.btn-ghost{background:rgba(40,70,160,0.25);border:1px solid rgba(100,130,220,0.2);border-radius:14px;padding:10px 16px;color:rgba(200,210,255,0.7);font-size:13px;cursor:pointer;transition:background 0.2s;}
+.btn-ghost:hover{background:rgba(40,70,160,0.4);}
+.btn-sm{padding:6px 14px;border-radius:20px;border:1px solid rgba(100,130,220,0.15);background:rgba(15,30,80,0.4);color:rgba(180,200,255,0.55);font-size:12px;cursor:pointer;transition:all 0.15s;}
+.btn-sm.active{background:rgba(232,200,74,0.2);border-color:rgba(232,200,74,0.5);color:#f0d86a;}
+.btn-sm.active-amber{background:rgba(60,100,220,0.25);border-color:rgba(80,120,240,0.4);color:#8aabff;}
 
 /* 标签 */
-.tag{display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.55);cursor:pointer;transition:all 0.15s;}
-.tag.selected{background:rgba(244,63,94,0.2);border-color:rgba(244,63,94,0.5);color:#fda4af;}
+.tag{display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;border:1px solid rgba(100,130,220,0.18);background:rgba(20,40,100,0.4);color:rgba(180,200,255,0.6);cursor:pointer;transition:all 0.15s;}
+.tag.selected{background:rgba(232,200,74,0.15);border-color:rgba(232,200,74,0.45);color:#f0d86a;}
 
 /* 星星 */
 .stars{color:rgba(255,255,255,0.2);letter-spacing:2px;}
 .stars .on{color:#f59e0b;}
 
 /* modal */
-.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:100;display:flex;align-items:flex-end;justify-content:center;}
-.modal-box{background:#1a1825;border-radius:24px 24px 0 0;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;border-top:1px solid rgba(255,255,255,0.1);}
+.modal-bg{position:fixed;inset:0;background:rgba(4,10,35,0.82);z-index:100;display:flex;align-items:flex-end;justify-content:center;}
+.modal-box{background:#0c1a4a;border-radius:24px 24px 0 0;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;border-top:1px solid rgba(100,130,220,0.2);}
 
 /* toast */
 .toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:200;padding:10px 20px;border-radius:20px;font-size:13px;white-space:nowrap;color:#fff;}
 
 /* 展览卡 */
-.exhibit-card{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);border-radius:16px;padding:14px;cursor:pointer;transition:background 0.15s;margin-bottom:10px;}
-.exhibit-card:hover{background:rgba(255,255,255,0.09);}
-.exhibit-icon{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,rgba(159,18,57,0.4),rgba(146,64,14,0.4));display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;}
+.exhibit-card{background:rgba(12,25,70,0.55);border:1px solid rgba(80,110,210,0.15);border-radius:16px;padding:14px;cursor:pointer;transition:all 0.15s;margin-bottom:10px;backdrop-filter:blur(6px);}
+.exhibit-card:hover{background:rgba(20,40,100,0.7);border-color:rgba(232,200,74,0.25);}
+.exhibit-icon{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,rgba(30,60,150,0.6),rgba(50,90,200,0.4));display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;}
 
 /* 护照 */
 .passport-cover{background:linear-gradient(135deg,#fdf3e0,#e8d5b0);border-radius:20px;padding:24px;text-align:center;color:#5c3d0a;position:relative;overflow:hidden;}
@@ -98,8 +130,8 @@ textarea{resize:none;}
 h1{font-size:22px;font-weight:700;}
 h2{font-size:18px;font-weight:600;}
 h3{font-size:15px;font-weight:600;}
-.muted{color:rgba(255,255,255,0.4);}
-.muted-sm{color:rgba(255,255,255,0.25);font-size:11px;}
+.muted{color:rgba(180,200,255,0.5);}
+.muted-sm{color:rgba(160,180,240,0.35);font-size:11px;}
 .text-rose{color:#f43f5e;}
 .text-amber{color:#f59e0b;}
 .text-green{color:#10b981;}
@@ -153,6 +185,32 @@ const PRESET_EXHIBITS = [
   {id:'e6',name:'AI创作艺术节',venue:'成都·东郊记忆',city:'成都',type:'科技艺术',cover:'🤖',desc:'人工智能与艺术家共同创作的视觉盛宴，可与作品实时互动。',startDate:'2026-03-20',endDate:'2026-05-20',userAdded:false},
   {id:'e7',name:'宇宙漫游·NASA太空摄影展',venue:'深圳·南山博物馆',city:'深圳',type:'摄影展',cover:'🚀',desc:'NASA官方授权，数十张震撼宇宙真实影像，令人泪目。',startDate:'2026-01-20',endDate:'2026-07-20',userAdded:false},
   {id:'e8',name:'街头涂鸦·城市墙面艺术节',venue:'上海·M50创意园',city:'上海',type:'街头艺术',cover:'🎨',desc:'国际街头艺术家现场创作，整条街巷变成流动美术馆。',startDate:'2026-04-01',endDate:'2026-09-30',userAdded:false},
+  {id:'e9',name:'莫奈·印象花园光影展',venue:'杭州·西湖美术馆',city:'杭州',type:'沉浸式',cover:'🌸',desc:'莫奈睡莲系列全息复现，薰衣草与玫瑰的光影涟漪铺满四壁。',startDate:'2026-02-01',endDate:'2026-08-31',userAdded:false},
+  {id:'e10',name:'敦煌·数字飞天大展',venue:'西安·陕西历史博物馆',city:'西安',type:'博物馆',cover:'🏜️',desc:'千年壁画数字化复原，飞天起舞在你眼前，沙漠风沙扑面而来。',startDate:'2026-01-01',endDate:'2026-12-31',userAdded:false},
+  {id:'e11',name:'城市褶皱·当代装置群展',venue:'武汉·昙华林艺术区',city:'武汉',type:'装置艺术',cover:'🌀',desc:'12位青年艺术家以「城市缝隙」为题，用废旧材料构建异质空间。',startDate:'2026-03-15',endDate:'2026-06-15',userAdded:false},
+  {id:'e12',name:'电音与视觉·沉浸音乐节',venue:'成都·麓湖生态城',city:'成都',type:'音乐现场',cover:'🎵',desc:'顶尖音乐人联合视觉艺术家，现场将音频实时转化为万花筒投影。',startDate:'2026-04-20',endDate:'2026-04-22',userAdded:false},
+  {id:'e13',name:'新加坡当代艺术联展',venue:'南京·金陵美术馆',city:'南京',type:'当代艺术',cover:'🔷',desc:'东南亚新生代艺术家群展，探讨身份认同与全球化语境下的本土叙事。',startDate:'2026-02-10',endDate:'2026-05-10',userAdded:false},
+  {id:'e14',name:'生命密码·基因科学展',venue:'苏州·苏州科技馆',city:'苏州',type:'自然科学',cover:'🧬',desc:'以互动装置呈现DNA双螺旋结构与生命演化，适合亲子共探。',startDate:'2026-03-01',endDate:'2026-09-01',userAdded:false},
+  {id:'e15',name:'荒野之息·自然摄影年展',venue:'重庆·重庆美术馆',city:'重庆',type:'摄影展',cover:'🦁',desc:'年度自然摄影大赏精选100幅，极地冰川到热带丛林一次看尽。',startDate:'2026-01-15',endDate:'2026-04-15',userAdded:false},
+  {id:'e16',name:'街区再生·社区壁画计划',venue:'厦门·沙坡尾艺术西区',city:'厦门',type:'街头艺术',cover:'🌊',desc:'在地艺术家与社区居民共创，把老渔港变成开放式当代艺术社区。',startDate:'2026-04-01',endDate:'2026-10-31',userAdded:false},
+];
+
+// ===== 虚拟评价数据（仅供演示，待实装真实用户评价）=====
+const DEMO_REVIEWS = [
+  {id:'dr1',exhibitId:'e1',un:'星河观察员',ua:'🌌',rating:5,text:'进去就直接哭了。站在那个漩涡里，感觉自己真的在梵高的脑子里。强烈推荐晚场票，人少还更有氛围。',tags:['哭了','灯光绝了','值得二刷'],photos:[],ts:Date.now()-86400000*5},
+  {id:'dr2',exhibitId:'e1',un:'不爱排队的瓜',ua:'🎫',rating:3,text:'内容很震撼，但人实在太多了，完全没法沉浸，旁边一直有人说话拍照。建议工作日去。',tags:['人太多','必须预约'],photos:[],ts:Date.now()-86400000*3},
+  {id:'dr3',exhibitId:'e1',un:'艺术留学生',ua:'🎨',rating:4,text:'作为学艺术的，看到《星夜》被这样处理还是很感动。音乐选得也好，是德彪西。就是时长有点短，40分钟转一圈就出来了。',tags:['内容深度','互动感强'],photos:[],ts:Date.now()-86400000*1},
+  {id:'dr4',exhibitId:'e2',un:'古典爱好者阿九',ua:'🏛️',rating:5,text:'真迹！！！真的是真迹！！排了两小时队，站在画前的三分钟值得一切。那绿色是真的绿进心里去了。',tags:['哭了','值得二刷','必须预约'],photos:[],ts:Date.now()-86400000*7},
+  {id:'dr5',exhibitId:'e2',un:'博物馆打卡侠',ua:'📷',rating:4,text:'配套展陈设计得很好，有宋代纸张制作的互动区，孩子玩得很开心。就是真迹展区限流太严，只能远远看。',tags:['带娃友好','内容深度'],photos:[],ts:Date.now()-86400000*2},
+  {id:'dr6',exhibitId:'e3',un:'当代艺术粉',ua:'🔺',rating:5,text:'每次进去都像第一次，镜子把你无限复制，分不清哪个是真实的自己。草间弥生永远的神。',tags:['值得二刷','灯光绝了','互动感强'],photos:[],ts:Date.now()-86400000*4},
+  {id:'dr7',exhibitId:'e3',un:'好奇宝宝',ua:'⭐',rating:2,text:'票价280，进去玩了不到20分钟，一个房间只能进5个人，外面排了40分钟。有点不值。',tags:['票价偏贵','人太多'],photos:[],ts:Date.now()-86400000*6},
+  {id:'dr8',exhibitId:'e4',un:'大自然爱好者',ua:'🌿',rating:5,text:'里面真的种了好多热带植物！空气都是湿润的。孩子从头到尾没喊过一次无聊，最后在礼品店买了好多种子。',tags:['带娃友好','性价比高','内容深度'],photos:[],ts:Date.now()-86400000*3},
+  {id:'dr9',exhibitId:'e5',un:'设计师小K',ua:'⚡',rating:5,text:'包豪斯影响了整个现代设计史，这个展把来龙去脉说得很清楚。建议带耳机，有免费语音导览，不然很多东西看不懂。',tags:['需要讲解','内容深度','适合独行'],photos:[],ts:Date.now()-86400000*8},
+  {id:'dr10',exhibitId:'e6',un:'码农逛展',ua:'🤖',rating:4,text:'作为程序员看这个展挺有意思，AI生成的画真的很难分辨。有个装置是实时用摄像头捕捉你的表情画画，很好玩。',tags:['互动感强','科技感十足'],photos:[],ts:Date.now()-86400000*2},
+  {id:'dr11',exhibitId:'e7',un:'仰望星空的人',ua:'🚀',rating:5,text:'看到那张詹姆斯·韦伯望远镜拍的深空照片，我在原地站了很久。人类真的太渺小了，但又好伟大。',tags:['哭了','内容深度','适合独行'],photos:[],ts:Date.now()-86400000*5},
+  {id:'dr12',exhibitId:'e9',un:'莫奈迷妹',ua:'🌸',rating:5,text:'从西湖边走进来看莫奈，这个选址也太绝了！睡莲的配色和西湖真的有某种神奇的呼应感。',tags:['灯光绝了','值得二刷','哭了'],photos:[],ts:Date.now()-86400000*2},
+  {id:'dr13',exhibitId:'e10',un:'丝路旅人',ua:'🏜️',rating:4,text:'数字壁画的还原精度很高，比去敦煌现场看到的更清晰（汗……），但还是少了那种千年沉积的震撼感。',tags:['内容深度','需要讲解'],photos:[],ts:Date.now()-86400000*4},
+  {id:'dr14',exhibitId:'e15',un:'野生摄影爱好者',ua:'📷',rating:5,text:'每一张都是绝对的顶级，特别是那组北极熊系列，气候变化的主题拍得既美又令人揪心。买了画册。',tags:['哭了','内容深度','性价比高'],photos:[],ts:Date.now()-86400000*1},
 ];
 
 const EXHIBIT_TYPES = ['沉浸式','博物馆','当代艺术','自然科学','设计艺术','科技艺术','摄影展','街头艺术','装置艺术','快闪展','艺术节','音乐现场','其他'];
@@ -167,7 +225,7 @@ function initData(){
   return {
     user:null,setupDone:false,tab:'discover',
     exhibits:JSON.parse(JSON.stringify(PRESET_EXHIBITS)),
-    reviews:[],
+    reviews:JSON.parse(JSON.stringify(DEMO_REVIEWS)),
     passport:{checkins:[],stamps:[]}
   };
 }
@@ -264,10 +322,11 @@ function renderDiscover(){
   });
   return `
   <div>
-    <div class="flex items-center justify-between mb16">
+    <div class="flex items-center justify-between mb8">
       <h2>发现展览</h2>
       <span class="muted fs12">${data.exhibits.length} 个展览</span>
     </div>
+    <p style="font-size:11px;color:rgba(160,180,255,0.3);margin-bottom:14px;">* 展览信息与评价均为虚构示例，待实装真实数据</p>
     <div class="relative mb12">
       <input type="text" id="search-q" placeholder="搜索展览或场馆…" value="${_fQ}" oninput="filterChange()">
     </div>
